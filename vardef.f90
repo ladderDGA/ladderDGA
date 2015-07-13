@@ -5,6 +5,8 @@ MODULE vardef
   !MPI-variables
   INTEGER :: myid, nprocs,ierror
   
+  REAL(KIND=8), PARAMETER :: pi=DACOS(-1d0)
+
   !variables for file-names
   CHARACTER(LEN=:), ALLOCATABLE :: fname
 
@@ -29,7 +31,7 @@ MODULE vardef
   INTEGER :: sum_ind_ch,sum_ind_sp
 
   !nonlocal susceptibilities
-  COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: chi_bubble
+  COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: chi_bubble, chi_bubble_slice
   COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: chich_x0,chisp_x0
 
   !variables for grids in momentum space
@@ -38,7 +40,7 @@ MODULE vardef
   REAL(KIND=8) :: qmax,Q0b,qx,qy,qz
 
   !variables for controlling loops
-  INTEGER :: ix,iy,iz,j,ind
+  INTEGER :: ix,iy,iz,iq,j,ind
   REAL(KIND=8) :: a,b,c
 
   !variables for lambda-corrections

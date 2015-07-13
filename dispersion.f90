@@ -23,12 +23,12 @@ MODULE dispersion
   
 CONTAINS
 
-  SUBROUTINE init_arrays(Nint,LQ,k_number,klist,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
+  SUBROUTINE init_arrays(Nint,LQ,k_number,klist,qmin,qmax,q,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
     IMPLICIT NONE
     !calculates the cos() and sin() for all k', q - and k-values of the corresponding grids
 
     !input: qpoint where chi(q) is maximal, grid-defining parameters and external k-points
-    REAL(KIND=8), INTENT(IN) :: qmax
+    REAL(KIND=8), INTENT(IN) :: qmin,qmax,q
     INTEGER, INTENT(IN) :: Nint,LQ,k_number
     REAL(KIND=8), DIMENSION(:,:), INTENT(IN) :: klist
     !output: q-list, cos() and sin() of all k-points
@@ -52,12 +52,12 @@ CONTAINS
        ENDDO
     ENDDO
 
-    Q0b=Pi/dfloat(LQ-1) 
+    Q0b=(qmax-qmin)/dfloat(LQ-1) 
     DO j=0,LQ-1
-       Qv(j)=dfloat(j)*Q0b
-       IF((Qv(j)-Q0b/2d0) .LT. qmax &
-            .AND. (Qv(j)+Q0b/2d0) .GT. qmax) THEN
-          Qv(j)=qmax
+       Qv(j)=qmin+dfloat(j)*Q0b
+       IF((Qv(j)-Q0b/2d0) .LT. q &
+            .AND. (Qv(j)+Q0b/2d0) .GT. q) THEN
+          Qv(j)=q
        END IF
        dcoq(j)=dcos(Qv(j))
        dsiq(j)=dsin(Qv(j))
@@ -80,7 +80,7 @@ CONTAINS
     !input: arguments for the dispersion are the already evaluated sin and cos functions
     REAL(KIND=8), INTENT(IN) :: ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz
     !subroutine internal variables
-    !bandwidth: 2t/(2t*sqrt(6)) for 2D
+    !bandwidth: 2t/(2t*sqrt(6)) for 3D
     REAL(KIND=8), PARAMETER :: tsc=0.40824829046386301636d0
 
     !dispersion for the simple cubic lattice

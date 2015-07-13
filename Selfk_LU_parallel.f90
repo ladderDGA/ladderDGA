@@ -1,5 +1,5 @@
 ! ladder-dga with automatic lambda-correction
-! ver 1.0
+! ver 3.0
 ! for the implementation of the Dyson-Schwinger equation of motion
 ! cf. PRB 80, 075104 (2009), especially eq. 8
 PROGRAM self_k
@@ -71,7 +71,6 @@ PROGRAM self_k
   !determine bosonic frequency index i
   !-> should be generalized to an array of bosonic frequenies if #ranks<#bosonic frequencies!!!!!
   i=myid-Iwbox+1+shift
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !Local part of the program. Calculates: selfloc, chich_loc, chisp_loc,
   !                                                            chich_loc_sum, chisp_loc_sum,
@@ -182,9 +181,9 @@ PROGRAM self_k
   chisp_loc_sum=chisp_loc_sum/beta
 
   !write bosonic index, chi and chi_all to standard output
-  WRITE(6,*)sum_ind_ch,chich_loc,chich_loc_all
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  WRITE(6,*)sum_ind_sp,chisp_loc,chisp_loc_all
+  !WRITE(6,*)sum_ind_ch,chich_loc,chich_loc_all
+  !CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+  !WRITE(6,*)sum_ind_sp,chisp_loc,chisp_loc_all
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
 
   !end of local part
@@ -197,8 +196,6 @@ PROGRAM self_k
   ALLOCATE(chi_bubble(-Iwbox:Iwbox-1,1:(LQ+2)*(LQ+1)*LQ/6))   !only qx >= qy>=qz
   ALLOCATE(chich_x0(1:(LQ+2)*(LQ+1)*LQ/6))   !only qx >= qy>=qz
   ALLOCATE(chisp_x0(1:(LQ+2)*(LQ+1)*LQ/6))   !only qx >= qy>=qz
-  
-  qmax=-dacos(1.0d0)   !max_q[chi(q,omega=0)], not yet implemented -> set to pi!!!!
 
   !allocate klist (contains list of external k-points)
   ALLOCATE(klist(k_number,3))
@@ -209,6 +206,7 @@ PROGRAM self_k
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
   CALL MPI_BCAST(klist,3*k_number,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)  
+
   !allocate arrays containing cos and sin functions evaluated for all momenta in the k'-, q- and k-grid
   ALLOCATE(Qv(0:LQ-1))
   !k'-grid
@@ -220,14 +218,20 @@ PROGRAM self_k
   !k-grid
   ALLOCATE(dcol(k_number,3))
   ALLOCATE(dsil(k_number,3))
-  !initialize the cos()- and sin()-arrays for the three momenta
-  CALL init_arrays(Nint,LQ,k_number,klist,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
 
-  !calculate bare susceptibility (bubble term)
-  CALL calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble)
+  !determination of qmax for spin channel (w=0) (maximizes Re(ChiS(w=0,q=(pi,pi,qz))))
+  !assuming an ordering vector of (pi,pi,qz)
+  IF(i.EQ.0) THEN
+     WRITE(6,*)'determination of qmax'
+     qmax=find_qmax(mu,beta,Iwbox,self,LQ,Nint,gammasp)
+     WRITE(6,*)'qmax=',qmax
+  ENDIF
+  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
+  CALL MPI_BCAST(qmax,1,MPI_REAL8,Iwbox-1-shift,MPI_COMM_WORLD,ierror)
+  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
 
-  !here: determination of qmax is possible!!!
-  !CALL init_arrays -> with new qmax!!!
+  CALL init_arrays(Nint,LQ,k_number,klist,0d0,pi,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
+  CALL calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble)     
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
