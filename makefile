@@ -3,7 +3,7 @@
 FC      := mpif90
 #SRCDIR  := .
 BUILDDIR := build
-TARGET  := Selfk_LU_parallel_2D.x
+TARGET  := Selfk_LU_parallel_3D.x
 
 
 #--------------------------------------Sources and header files------------------------------------------
@@ -49,7 +49,9 @@ prof:   $(TARGET)
 
 optimize: FFLAGS += $(OPTIMIZEFLAGS)
 optimize: $(SOURCES) $(HEADERS)
+	@mkdir -p bin
 	$(FC) $(FFLAGS) $(INC) $(SOURCES) -o $(TARGET) $(LIB)
+	#rm *.o
 
 clean:
 	@echo " Cleaning..."; 

@@ -35,11 +35,11 @@ MODULE vardef
   !variables for grids in momentum space
   REAL(KIND=8), DIMENSION(:,:), ALLOCATABLE :: klist,dcok,dsik,dcol,dsil
   REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: dcoq,dsiq,Qv
-  REAL(KIND=8) :: qx,qy,qmax,Q0b
+  REAL(KIND=8) :: qmax,Q0b,qx,qy,qz
 
   !variables for controlling loops
-  INTEGER :: ix,iy,j,ind
-  REAL(KIND=8) :: a,b
+  INTEGER :: ix,iy,iz,j,ind
+  REAL(KIND=8) :: a,b,c
 
   !variables for lambda-corrections
   REAL(KIND=8) :: lambdach,lambdasp

@@ -26,8 +26,8 @@ CONTAINS
     COMPLEX(KIND=8), INTENT(IN) :: Chi_loc_sum,Chi_inv_min
     COMPLEX(KIND=8), DIMENSION(:), INTENT(IN) :: chi_x0
     !function internal variables
-    INTEGER :: xstep,ix,iy,ind
-    REAL(KIND=8) :: x0,x,norm,a,b,deltino_used
+    INTEGER :: xstep,ix,iy,iz,ind
+    REAL(KIND=8) :: x0,x,norm,a,b,c,deltino_used
     COMPLEX(KIND=8) :: Chi_DGA,Chi_DGA_der,Chi_DGA_der2
     COMPLEX(KIND=8) :: Chi_DGA_sum,Chi_DGA_der_sum,Chi_DGA_der2_sum
     !MPI-variable
@@ -52,20 +52,28 @@ CONTAINS
              IF(iy.eq.0.or.iy.eq.LQ-1) THEN
                 b=b*0.5d0
              ENDIF
-             
-             b=b*dfloat(2/((1+iy)/(1+ix)+1))
+             DO iz=0,iy
+                c=b
+                IF(iz.eq.0.or.iz.eq.LQ-1) THEN
+                   c=c*0.5d0
+                ENDIF
 
-             ind=ix*(ix+1)/2+iy+1
+                c=c*dfloat(6/ &
+                     ((1+iy)/(1+ix)+(1+iz)/(1+iy)+ &
+                     3*((1+iz)/(1+ix))+1))
 
-             IF((i.GE. -sum_ind).AND.(i.LE.sum_ind)) THEN
-                Chi_DGA=Chi_DGA+4*b/ &
-                     (1.0d0/Chi_x0(ind)+x)
-                Chi_DGA_der=Chi_DGA_der-4*b/ &
-                     (1.0d0/Chi_x0(ind)+x)**2
-                Chi_DGA_der2=Chi_DGA_der2+8*b/ &
-                     (1d0/Chi_x0(ind)+x)**3
-             ENDIF
-             norm=norm+4*b
+                ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
+
+                IF((i .GE. -sum_ind).AND.(i.LE.sum_ind)) THEN
+                   Chi_DGA=Chi_DGA+8*c/ &
+                        (1.0d0/Chi_x0(ind)+x)
+                   Chi_DGA_der=Chi_DGA_der-8*c/ &
+                        (1.0d0/Chi_x0(ind)+x)**2
+                   Chi_DGA_der2=Chi_DGA_der2+16*c/ &
+                        (1d0/Chi_x0(ind)+x)**3
+                ENDIF
+                norm=norm+8*c
+             ENDDO
           ENDDO
        ENDDO
        Chi_DGA=Chi_DGA/(norm*beta)
@@ -91,7 +99,7 @@ CONTAINS
        IF(ABS(Chi_DGA_sum-Chi_loc_sum).LT.prec(chsp)) THEN
           EXIT
        ENDIF
-         
+       
        CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
        
        x=x0-dreal((Chi_DGA_sum-Chi_loc_sum)/Chi_DGA_der_sum)
@@ -112,5 +120,5 @@ CONTAINS
     lambda=x
     CLOSE(30)
   END FUNCTION lambda
-
+  
 END MODULE lambda_correction

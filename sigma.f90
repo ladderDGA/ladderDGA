@@ -141,8 +141,8 @@ CONTAINS
     COMPLEX(KIND=8), DIMENSION(:,-Iwbox:), INTENT(OUT) :: selflist,selflistch
     COMPLEX(KIND=8), DIMENSION(:,-Iwbox:), INTENT(OUT) :: selflistsp,selflistrest
     !subroutine internal variables
-    INTEGER :: j,k,ix,iy,s,t,i1,perm,ind
-    REAL(KIND=8) :: a,b,chich,chisp,pi,Q0b
+    INTEGER :: j,k,ix,iy,iz,s,t,r,i1,perm,ind
+    REAL(KIND=8) :: a,b,c,chich,chisp,pi,Q0b
     REAL(KIND=8), DIMENSION(:,:,:), ALLOCATABLE :: eklist
     COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: selfphich,selfphisp
     COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: vrgch,vrgsp
@@ -164,7 +164,7 @@ CONTAINS
     ALLOCATE(chi0ch(-Iwbox:Iwbox-1))
     ALLOCATE(chi0sp(-Iwbox:Iwbox-1))
     ALLOCATE(chi0rest(-Iwbox:Iwbox-1))
-    ALLOCATE(eklist(1:k_number,4,2))
+    ALLOCATE(eklist(k_number,8,6))
 
     pi=dacos(-1.0d0)
     Q0b=pi/dfloat(LQ-1)
@@ -194,109 +194,140 @@ CONTAINS
           IF(iy.EQ.0.OR.iy.EQ.LQ-1) THEN
              b=b*0.5d0
           ENDIF
+          DO iz=0,iy
+             c=b
+             IF(iz.EQ.0.OR.iz.EQ.LQ-1) THEN
+                c=c*0.5d0
+             ENDIF
             
-          b=b*dfloat(2/((1+iy)/(1+ix)+1))/2.0d0
-          
-          ind=ix*(ix+1)/2+iy+1
+             c=c*dfloat(6/ &
+                  ((1+iy)/(1+ix)+(1+iz)/(1+iy)+ &
+                  3*((1+iz)/(1+ix))+1))/6.0d0
 
-          IF (myid.EQ.0) THEN
-             WRITE(6,*) 'i,j=',ix,iy
-          ENDIF
+             ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
+
+             IF (myid.EQ.0) THEN
+                WRITE(6,*) 'ix,iy,iz=',ix,iy,iz
+             ENDIF
           
-          !compute Lambda-corrected Chi_lambda
-          chich=1.d0/(1.d0/chich_x0(ind)+lambdach)
-          chisp=1.d0/(1.d0/chisp_x0(ind)+lambdasp)
+             !compute Lambda-corrected Chi_lambda
+             chich=1.d0/(1.d0/chich_x0(ind)+lambdach)
+             chisp=1.d0/(1.d0/chisp_x0(ind)+lambdasp)
           
-          !symmetry conditions for the fully irreducible BZ
-          DO s=0,1
-             DO t=0,1
-                DO i1=1,k_number
-                   eklist(i1,2*s+t+1,1)=eps( &
-                        dcol(i1,1),dcol(i1,2), &
-                        dcoq(ix),dcoq(iy), &
-                        dsil(i1,1),dsil(i1,2), &
-                        (-1)**s*dsiq(ix),(-1)**t*dsiq(iy))
-                   eklist(i1,2*s+t+1,2)=eps( &
-                        dcol(i1,1),dcol(i1,2), &
-                        dcoq(iy),dcoq(ix), &
-                        dsil(i1,1),dsil(i1,2), &
-                        (-1)**t*dsiq(iy),(-1)**s*dsiq(ix))
+             !symmetry conditions for the fully irreducible BZ
+             DO r=0,1
+                DO s=0,1
+                   DO t=0,1
+                      DO i1=1,k_number
+                         eklist(i1,4*r+2*s+t+1,1)=eps( &
+                              dcol(i1,1),dcol(i1,2),dcol(i1,3), &
+                              dcoq(ix),dcoq(iy),dcoq(iz), &
+                              dsil(i1,1),dsil(i1,2),dsil(i1,3), &
+                              (-1)**r*dsiq(ix),(-1)**s*dsiq(iy),(-1)**t*dsiq(iz))
+                         !and the other 5 permutations of qx, qy and qz
+                         eklist(i1,4*r+2*s+t+1,2)=eps( &
+                              dcol(i1,1),dcol(i1,2),dcol(i1,3), &
+                              dcoq(ix),dcoq(iz),dcoq(iy), &
+                              dsil(i1,1),dsil(i1,2),dsil(i1,3), &
+                              (-1)**r*dsiq(ix),(-1)**t*dsiq(iz),(-1)**s*dsiq(iy))
+                         eklist(i1,4*r+2*s+t+1,3)=eps( &
+                              dcol(i1,1),dcol(i1,2),dcol(i1,3), &
+                              dcoq(iy),dcoq(ix),dcoq(iz), &
+                              dsil(i1,1),dsil(i1,2),dsil(i1,3), &
+                              (-1)**s*dsiq(iy),(-1)**r*dsiq(ix),(-1)**t*dsiq(iz))
+                         eklist(i1,4*r+2*s+t+1,4)=eps( &
+                              dcol(i1,1),dcol(i1,2),dcol(i1,3), &
+                              dcoq(iy),dcoq(iz),dcoq(ix), &
+                              dsil(i1,1),dsil(i1,2),dsil(i1,3), &
+                              (-1)**s*dsiq(iy),(-1)**t*dsiq(iz),(-1)**r*dsiq(ix))
+                         eklist(i1,4*r+2*s+t+1,5)=eps( &
+                              dcol(i1,1),dcol(i1,2),dcol(i1,3), &
+                              dcoq(iz),dcoq(iy),dcoq(ix), &
+                              dsil(i1,1),dsil(i1,2),dsil(i1,3), &
+                              (-1)**t*dsiq(iz),(-1)**s*dsiq(iy),(-1)**r*dsiq(ix))
+                         eklist(i1,4*r+2*s+t+1,6)=eps( &
+                              dcol(i1,1),dcol(i1,2),dcol(i1,3), &
+                              dcoq(iz),dcoq(ix),dcoq(iy), &
+                              dsil(i1,1),dsil(i1,2),dsil(i1,3), &
+                              (-1)**t*dsiq(iz),(-1)**r*dsiq(ix),(-1)**s*dsiq(iy))
+                      ENDDO
+                   ENDDO
                 ENDDO
              ENDDO
-          ENDDO
           
-          DO k=-Iwbox,Iwbox-1
+             DO k=-Iwbox,Iwbox-1
+                DO j=-Iwbox,Iwbox-1
+                   selfphich(j,k)=-gammach(j,k)-uhub/beta**2
+                   selfphisp(j,k)=-gammasp(j,k)+uhub/beta**2
+                   IF(j .eq. k) THEN
+                      selfphich(j,j)=selfphich(j,j)+ &
+                           1.d0/chi_bubble(j,ind)
+                      selfphisp(j,j)=selfphisp(j,j)+ &
+                           1.d0/chi_bubble(j,ind)
+                   ENDIF
+                ENDDO
+             ENDDO
+          
+             !Compute inversion chi_q=(chi_0_loc**-1-Gamma_loc)**-1
+             CALL ZGETRF(Mmat,Mmat,selfphich,Mmat,ipiv,infoinv)
+             CALL ZGETRI(Mmat,selfphich,Mmat,ipiv,workinv,10*Mmat,infoinv)
+             
+             CALL ZGETRF(Mmat,Mmat,selfphisp,Mmat,ipiv,infoinv)
+             CALL ZGETRI(Mmat,selfphisp,Mmat,ipiv,workinv,10*Mmat,infoinv)
+          
+             DO j=-Iwbox,Iwbox-1 
+                vrgch(j)=dcmplx(0.d0,0.d0)
+                vrgsp(j)=dcmplx(0.d0,0.d0)
+                DO k=-Iwbox,Iwbox-1
+                   vrgch(j)=vrgch(j)+selfphich(k,j)
+                   vrgsp(j)=vrgsp(j)+selfphisp(k,j) 
+                ENDDO
+                vrgch(j)=vrgch(j)/chi_bubble(j,ind)
+                vrgsp(j)=vrgsp(j)/chi_bubble(j,ind)
+             ENDDO
+          
+             !compute Sigma_q
              DO j=-Iwbox,Iwbox-1
-                selfphich(j,k)=-gammach(j,k)-uhub/beta**2
-                selfphisp(j,k)=-gammasp(j,k)+uhub/beta**2
-                IF(j .EQ. k) THEN
-                   selfphich(j,j)=selfphich(j,j)+ &
-                        1.d0/chi_bubble(j,ind)
-                   selfphisp(j,j)=selfphisp(j,j)+ &
-                        1.d0/chi_bubble(j,ind)
-                ENDIF
+                chi0(j)=dcmplx(0.0d0,0.0d0)
+                chi0ch(j)=dcmplx(0.0d0,0.0d0)
+                chi0sp(j)=dcmplx(0.0d0,0.0d0)
+                chi0rest(j)=dcmplx(0.0d0,0.0d0)
+                DO k=-Iwbox,Iwbox-1
+                   chi0(j)=chi0(j)+chi_bubble(k,ind)*fupdown(j,k)
+                   chi0ch(j)=chi0ch(j)+0.5d0*chi_bubble(k,ind)*gammach(j,k)
+                   chi0sp(j)=chi0sp(j)-1.5d0*chi_bubble(k,ind)*gammasp(j,k)
+                   chi0rest(j)=chi0rest(j)+chi_bubble(k,ind)* &
+                        (1.5d0*gammasp(j,k)-0.5d0*gammach(j,k)+fupdown(j,k))
+                ENDDO
              ENDDO
-          ENDDO
-          
-          !Compute inversion chi_q=(chi_0_loc**-1-Gamma_loc)**-1
-          CALL ZGETRF(Mmat,Mmat,selfphich,Mmat,ipiv,infoinv)
-          CALL ZGETRI(Mmat,selfphich,Mmat,ipiv,workinv,10*Mmat,infoinv)
-          
-          CALL ZGETRF(Mmat,Mmat,selfphisp,Mmat,ipiv,infoinv)
-          CALL ZGETRI(Mmat,selfphisp,Mmat,ipiv,workinv,10*Mmat,infoinv)
-          
-          DO j=-Iwbox,Iwbox-1 
-             vrgch(j)=dcmplx(0.d0,0.d0)
-             vrgsp(j)=dcmplx(0.d0,0.d0)
-             DO k=-Iwbox,Iwbox-1
-                vrgch(j)=vrgch(j)+selfphich(k,j)
-                vrgsp(j)=vrgsp(j)+selfphisp(k,j) 
+             DO j=-Iwbox,Iwbox-1
+                chi0(j)=(chi0(j)+1.5d0*vrgsp(j)* &
+                     (1.d0+uhub*chisp)-0.5d0*vrgch(j)* &
+                     (1.d0-uhub*chich)-1.5d0+0.5d0)*uhub/beta
+                chi0ch(j)=(chi0ch(j)-0.5d0*vrgch(j)* &
+                     (1.d0-uhub*chich)+0.5d0)*uhub/beta
+                chi0sp(j)=(chi0sp(j)+1.5d0*vrgsp(j)* &
+                     (1.d0+uhub*chisp)-1.5d0)*uhub/beta
+                chi0rest(j)=(chi0rest(j))*uhub/beta
              ENDDO
-             vrgch(j)=vrgch(j)/chi_bubble(j,ind)
-             vrgsp(j)=vrgsp(j)/chi_bubble(j,ind)
-          ENDDO
           
-          !compute Sigma_q
-          DO j=-Iwbox,Iwbox-1
-             chi0(j)=dcmplx(0.0d0,0.0d0)
-             chi0ch(j)=dcmplx(0.0d0,0.0d0)
-             chi0sp(j)=dcmplx(0.0d0,0.0d0)
-             chi0rest(j)=dcmplx(0.0d0,0.0d0)
-             DO k=-Iwbox,Iwbox-1
-                chi0(j)=chi0(j)+chi_bubble(k,ind)*fupdown(j,k)
-                chi0ch(j)=chi0ch(j)+0.5d0*chi_bubble(k,ind)*gammach(j,k)
-                chi0sp(j)=chi0sp(j)-1.5d0*chi_bubble(k,ind)*gammasp(j,k)
-                chi0rest(j)=chi0rest(j)+chi_bubble(k,ind)* &
-                     (1.5d0*gammasp(j,k)-0.5d0*gammach(j,k)+fupdown(j,k))
-             ENDDO
-          ENDDO
-          DO j=-Iwbox,Iwbox-1
-             chi0(j)=(chi0(j)+1.5d0*vrgsp(j)* &
-                  (1.d0+uhub*chisp)-0.5d0*vrgch(j)* &
-                  (1.d0-uhub*chich)-1.5d0+0.5d0)*uhub/beta
-             chi0ch(j)=(chi0ch(j)-0.5d0*vrgch(j)* &
-                  (1.d0-uhub*chich)+0.5d0)*uhub/beta
-             chi0sp(j)=(chi0sp(j)+1.5d0*vrgsp(j)* &
-                  (1.d0+uhub*chisp)-1.5d0)*uhub/beta
-             chi0rest(j)=(chi0rest(j))*uhub/beta
-          ENDDO
-          
-          DO j=-Iwbox,Iwbox-1
-             DO s=1,4
-                DO i1=1,k_number
-                   DO perm=1,2 ! permutations of fully irreducible BZ
-                      selflist(i1,j)=selflist(i1,j)+chi0(j)/ &
-                           (w(i+j)-Eklist(i1,s,perm))* &
-                           Q0b**2/(4.0d0*pi**2)*b
-                      selflistch(i1,j)=selflistch(i1,j)+chi0ch(j)/ &
-                           (w(i+j)-Eklist(i1,s,perm))* &
-                           Q0b**2/(4.0d0*pi**2)*b
-                      selflistsp(i1,j)=selflistsp(i1,j)+chi0sp(j)/ &
-                           (w(i+j)-Eklist(i1,s,perm))* &
-                           Q0b**2/(4.0d0*pi**2)*b
-                      selflistrest(i1,j)=selflistrest(i1,j)+chi0rest(j)/ &
-                           (w(i+j)-Eklist(i1,s,perm))* &
-                           Q0b**2/(4.0d0*pi**2)*b
+             DO j=-Iwbox,Iwbox-1
+                DO s=1,8
+                   DO i1=1,k_number
+                      DO perm=1,6 ! permutations of fully irreducible BZ
+                         selflist(i1,j)=selflist(i1,j)+chi0(j)/ &
+                              (w(i+j)-Eklist(i1,s,perm))* &
+                              Q0b**3/(8.0d0*pi**3)*c
+                         selflistch(i1,j)=selflistch(i1,j)+chi0ch(j)/ &
+                              (w(i+j)-Eklist(i1,s,perm))* &
+                              Q0b**3/(8.0d0*pi**3)*c
+                         selflistsp(i1,j)=selflistsp(i1,j)+chi0sp(j)/ &
+                              (w(i+j)-Eklist(i1,s,perm))* &
+                              Q0b**3/(8.0d0*pi**3)*c
+                         selflistrest(i1,j)=selflistrest(i1,j)+chi0rest(j)/ &
+                              (w(i+j)-Eklist(i1,s,perm))* &
+                              Q0b**3/(8.0d0*pi**3)*c
+                      ENDDO
                    ENDDO
                 ENDDO
              ENDDO

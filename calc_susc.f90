@@ -1,5 +1,5 @@
 !Contains the subroutines for calculating:
-!-) non-interacting susceptibility (bare bubble) -> in the programm: chi_bubble(nu)
+!-) non-interacting susceptibility (bare bubble) -> in the programm: chi1(nu)
 !-) full interacting susceptibility (in ladder approximation) -> in the program: chisp, und chich
 !-) for a given omega and q!
 MODULE calc_susc
@@ -21,7 +21,7 @@ CONTAINS
     !output:
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,:), INTENT(OUT) :: chi_bubble
     !subroutine internal variables
-    INTEGER :: j,ix,iy,iNx,iNy,igx,igy,ind
+    INTEGER :: j,ind,ix,iy,iz,iNx,iNy,iNz,igx,igy,igz
     REAl(KIND=8) :: pi,ek,ekq
     COMPLEX(KIND=8), ALLOCATABLE :: w(:)
 
@@ -31,23 +31,29 @@ CONTAINS
        w(j)=dcmplx(0.0d0,(pi/beta)*dfloat(2*j+1))+mu-self(j)
     ENDDO
     
-    chi_bubble=dcmplx(0.0d0,0.0d0)
-
+    chi_bubble=dcmplx(0d0,0d0)
     DO igx=1, Ng
        DO igy=1, Ng
-          DO iNx=0,Nint-1
-             DO iNy=0,Nint-1
-                ek=eps(dcok(iNx,igx),dcok(iNy,igy), &
-                     1.d0,1.d0,0.d0,0.d0,0.d0,0.d0)
-                DO ix=0,LQ-1
-                   DO iy=0,ix
-                      ind=ix*(ix+1)/2+iy+1
-                      ekq=eps(dcok(iNx,igx),dcok(iNy,igy), &
-                           dcoq(ix),dcoq(iy),dsik(iNx,igx),dsik(iNy,igy), &
-                           dsiq(ix),dsiq(iy))
-                      DO j=-iwbox,iwbox-1
-                         chi_bubble(j,ind)=chi_bubble(j,ind)- &
-                              ws(igx)*ws(igy)/((w(j)-ek)*(w(j+i)-ekq))
+          DO igz=1,Ng
+             DO iNx=0,Nint-1
+                DO iNy=0,Nint-1
+                   DO iNz=0,Nint-1
+                      ek=eps(dcok(iNx,igx),dcok(iNy,igy),dcok(iNz,igz), &
+                           1.d0,1.d0,1.0d0,0.0d0,0.0d0,0.d0,0.d0,0.d0,0.d0)
+                      DO ix=0,LQ-1
+                         DO iy=0,ix
+                            DO iz=0,iy
+                               ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
+                               ekq=eps(dcok(iNx,igx),dcok(iNy,igy),dcok(iNz,igz), &
+                                    dcoq(ix),dcoq(iy),dcoq(iz), &
+                                    dsik(iNx,igx),dsik(iNy,igy),dsik(iNz,igz), &
+                                    dsiq(ix),dsiq(iy),dsiq(iz))
+                               DO j=-iwbox,iwbox-1
+                                  chi_bubble(j,ind)=chi_bubble(j,ind)- &
+                                       ws(igx)*ws(igy)*ws(igz)/((w(j)-ek)*(w(j+i)-ekq))
+                               ENDDO
+                            ENDDO
+                         ENDDO
                       ENDDO
                    ENDDO
                 ENDDO
@@ -55,12 +61,11 @@ CONTAINS
           ENDDO
        ENDDO
     ENDDO
-
-    chi_bubble=beta*chi_bubble/ &
-         ((2.0d0*dfloat(Nint))**2)
     
     DEALLOCATE(w)
 
+    chi_bubble=beta*chi_bubble/ &
+         ((2.0d0*dfloat(Nint))**3)
   END SUBROUTINE calc_bubble
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -101,7 +106,7 @@ CONTAINS
     
     ! compute inversion chi_q=(chi_bubble_q**-1-Gamma_loc)**-1
     CALL ZGETRF(Mmat,Mmat,selftemp,Mmat,ipiv,infoinv)
-    CALL ZGETRI(Mmat,selftemp,Mmat,ipiv,workinv,10*Mmat,infoinv)
+    CALL  ZGETRI(Mmat,selftemp,Mmat,ipiv,workinv,10*Mmat,infoinv)
     
     ! compute Chi
     calc_chi=(0.d0,0.d0)

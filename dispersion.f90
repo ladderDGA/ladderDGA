@@ -2,24 +2,24 @@
 MODULE dispersion
   IMPLICIT NONE
   
-  INTEGER, PARAMETER :: ng=1
+  INTEGER, PARAMETER :: ng=5
   !points for the Gauss-Legendre integration
-  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: tstep=(/1.0d0/)
+  !REAL(KIND=8), PARAMETER, DIMENSION(ng) :: tstep=(/1.0d0/)
   !weights for the Gauss-Legendre integration
-  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: ws=(/2.0d0/)
+  !REAL(KIND=8), PARAMETER, DIMENSION(ng) :: ws=(/2.0d0/)
 
   !here data for higher order Gauss-Legendre integration can be given
   !the parameter ng has to be set accordingly
 
   !data for 5th-order Legendre Integration
-  !REAL(KIND=8), PRIVATE, PARAMETER, DIMENSION(ng) :: tstep= &
-  !(/-0.9061798459386640,-0.53846931010568309, &
-  !0.0000000000000000, 0.53846931010568309,&
-  !0.9061798459386640/)
-  !REAL(KIND=8), PRIVATE, PARAMETER, DIMENSION(ng) :: ws= &
-  !(/ 0.2369268850561891, 0.47862867049936650, &
-  !0.5688888888888889, 0.47862867049936650, &
-  !0.2369268850561891/)
+  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: tstep= &
+  (/-0.9061798459386640,-0.53846931010568309, &
+  0.0000000000000000, 0.53846931010568309,&
+  0.9061798459386640/)
+  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: ws= &
+  (/ 0.2369268850561891, 0.47862867049936650, &
+  0.5688888888888889, 0.47862867049936650, &
+  0.2369268850561891/)
   
 CONTAINS
 
@@ -66,24 +66,26 @@ CONTAINS
     DO j=1,k_number
        dcol(j,1)=dcos(klist(j,1))
        dcol(j,2)=dcos(klist(j,2))
+       dcol(j,3)=dcos(klist(j,3))
        dsil(j,1)=dsin(klist(j,1))
        dsil(j,2)=dsin(klist(j,2))
+       dsil(j,3)=dsin(klist(j,3))
     ENDDO
   END SUBROUTINE init_arrays
 
-  REAL(KIND=8) PURE FUNCTION eps(ax,ay,bx,by,cx,cy,dx,dy)
+  PURE REAL(KIND=8) FUNCTION eps(ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz)
     IMPLICIT NONE
     !calculates the dispersion in terms of sin() and cos() functions
 
     !input: arguments for the dispersion are the already evaluated sin and cos functions
-    REAL(KIND=8), INTENT(IN) :: ax,ay,bx,by,cx,cy,dx,dy
+    REAL(KIND=8), INTENT(IN) :: ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz
     !subroutine internal variables
-    !bandwidth: 2t/(2t*sqrt(4)) for 2D
-    REAL(KIND=8), PARAMETER :: tsc=0.5d0
+    !bandwidth: 2t/(2t*sqrt(6)) for 2D
+    REAL(KIND=8), PARAMETER :: tsc=0.40824829046386301636d0
 
     !dispersion for the simple cubic lattice
     eps = -tsc*(ax*bx-cx*dx+ &
-         ay*by-cy*dy)
+         ay*by-cy*dy+az*bz-cz*dz)
 
   END FUNCTION eps
 

@@ -10,11 +10,8 @@ PROGRAM self_k
   USE dispersion
   USE calc_susc
   USE lambda_correction
-
   IMPLICIT NONE
-  
   INCLUDE 'mpif.h'
-
   
   !MPI initialization
   CALL MPI_INIT(ierror)
@@ -197,20 +194,20 @@ PROGRAM self_k
   !nonlocal part
 
   !allocate nonlocal susceptibilities (bare bubble, q-dependent DMFT susceptibility)
-  ALLOCATE(chi_bubble(-Iwbox:Iwbox-1,1:(LQ+1)*LQ/2))   !only qx >= qy
-  ALLOCATE(chich_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
-  ALLOCATE(chisp_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
+  ALLOCATE(chi_bubble(-Iwbox:Iwbox-1,1:(LQ+2)*(LQ+1)*LQ/6))   !only qx >= qy>=qz
+  ALLOCATE(chich_x0(1:(LQ+2)*(LQ+1)*LQ/6))   !only qx >= qy>=qz
+  ALLOCATE(chisp_x0(1:(LQ+2)*(LQ+1)*LQ/6))   !only qx >= qy>=qz
   
   qmax=-dacos(1.0d0)   !max_q[chi(q,omega=0)], not yet implemented -> set to pi!!!!
 
   !allocate klist (contains list of external k-points)
-  ALLOCATE(klist(k_number,2))
+  ALLOCATE(klist(k_number,3))
   !read external k-points (only rank 0)
   IF (myid.EQ.0) THEN
      CALL read_klist('klist.dat',k_number,klist)
   ENDIF
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
-  CALL MPI_BCAST(klist,2*k_number,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(klist,3*k_number,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)  
   !allocate arrays containing cos and sin functions evaluated for all momenta in the k'-, q- and k-grid
   ALLOCATE(Qv(0:LQ-1))
@@ -221,8 +218,8 @@ PROGRAM self_k
   ALLOCATE(dcoq(0:LQ-1))
   ALLOCATE(dsiq(0:LQ-1))
   !k-grid
-  ALLOCATE(dcol(k_number,2))
-  ALLOCATE(dsil(k_number,2))
+  ALLOCATE(dcol(k_number,3))
+  ALLOCATE(dsil(k_number,3))
   !initialize the cos()- and sin()-arrays for the three momenta
   CALL init_arrays(Nint,LQ,k_number,klist,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
 
@@ -250,34 +247,43 @@ PROGRAM self_k
               b=b*0.5d0
            ENDIF
            qy = Qv(iy)
+           DO iz=0,iy
+              c=b
+              IF (iz.eq.0.or.iz.eq.LQ-1) then
+                 c=c*0.5d0
+              ENDIF
+              qz = Qv(iz)
            
            !multiplicity (fully irreducible BZ)
-           b=b*dfloat(2/((1+iy)/(1+ix)+1))
-           
-           ind=ix*(ix+1)/2+iy+1
+              c=c*dfloat(6/ &
+                   ((1+iy)/(1+ix)+(1+iz)/(1+iy)+ &
+                   3*((1+iz)/(1+ix))+1))
 
-           !write status to standard output
-           IF (myid.EQ.0) THEN
-              WRITE(6,*) 'i,j=',ix,iy,'Qx =',qx,'Qy =',qy,'b',b 
-           ENDIF
+              ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
            
-           !calculate chi (without lambda correction)
-           chich_x0(ind)=calc_chi(Iwbox,beta,gammach, &
-                chi_bubble(:,ind))
-           chisp_x0(ind)=calc_chi(Iwbox,beta,gammasp, &
-                chi_bubble(:,ind))
-           !determine starting value for lambda-correction
-           !in order to get positive chi(w=0,q)
-           IF (i.EQ.0) THEN
-              IF ((1.0d0/dreal(chich_x0(ind))).LT. &
-                   (1.0d0/dreal(chich_inv_min))) THEN
-                 chich_inv_min=chich_x0(ind)
+              !write status to standard output
+              IF (myid.EQ.0) THEN
+                 WRITE(6,*) 'i,j,k=',ix,iy,iz,'Qx =',qx,'Qy =',qy,'Qz =',qz,'c',c 
               ENDIF
-              IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
-                   (1.0d0/dreal(chisp_inv_min))) THEN
-                 chisp_inv_min=chisp_x0(ind)
+           
+              !calculate chi (without lambda correction)
+              chich_x0(ind)=calc_chi(Iwbox,beta,gammach, &
+                   chi_bubble(:,ind))
+              chisp_x0(ind)=calc_chi(Iwbox,beta,gammasp, &
+                   chi_bubble(:,ind))
+              !determine starting value for lambda-correction
+              !in order to get positive chi(w=0,q)
+              IF (i.EQ.0) THEN
+                 IF ((1.0d0/dreal(chich_x0(ind))).LT. &
+                      (1.0d0/dreal(chich_inv_min))) THEN
+                    chich_inv_min=chich_x0(ind)
+                 ENDIF
+                 IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
+                      (1.0d0/dreal(chisp_inv_min))) THEN
+                    chisp_inv_min=chisp_x0(ind)
+                 ENDIF
               ENDIF
-           ENDIF
+           ENDDO
         ENDDO
      ENDDO
      
@@ -400,12 +406,12 @@ PROGRAM self_k
   ENDIF   !endif (.not.chi_only)
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+
   IF(i .EQ. 0) THEN
      WRITE(6,*),'Finished.'
   ENDIF
 
   CALL MPI_FINALIZE(ierror)
-  
   STOP
-  
+
 END PROGRAM self_k
