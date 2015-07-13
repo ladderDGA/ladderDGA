@@ -1,0 +1,16 @@
+Selfk_LU_parallel_2D.x
+build/*
+klist/*
+chich_omega/*
+chisp_omega/*
+lambda_correction_sp.dat
+lambda_correction_ch.dat
+chi_dir/*
+gamma_dir/*
+gm_wim
+g0mand
+ladderDGA.in
+klist.dat
+vert_chi
+*.dat
+GAMMA*
