@@ -4,6 +4,8 @@ MODULE vardef
 
   !MPI-variables
   INTEGER :: myid, nprocs,ierror
+
+  REAL(KIND=8), PARAMETER :: pi=DACOS(-1d0)
   
   !variables for file-names
   CHARACTER(LEN=:), ALLOCATABLE :: fname

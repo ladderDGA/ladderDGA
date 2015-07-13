@@ -6,6 +6,9 @@ MODULE calc_susc
   USE dispersion
   IMPLICIT NONE
 
+  INTEGER, PARAMETER, PRIVATE :: qmaxsteps=100
+  REAL(KIND=8), PARAMETER, PRIVATE :: qmaxprec=1e-14
+
 CONTAINS
 
   SUBROUTINE calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq, &
@@ -64,6 +67,142 @@ CONTAINS
   END SUBROUTINE calc_bubble
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  SUBROUTINE calc_bubble_slice(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq, &
+       chi_bubble_slice)
+    !caluclates the non-interacing susceptibility (q=(pi,qy)) as a function of (nu,omega,qy)
+
+    !input:
+    INTEGER, INTENT(IN) :: LQ,Nint,i,Iwbox
+    REAL(KIND=8), INTENT(IN) :: mu,beta
+    REAL(KIND=8), DIMENSION(0:,:), INTENT(IN) :: dcok,dsik
+    REAL(KIND=8), DIMENSION(0:), INTENT(IN) :: dcoq,dsiq
+    COMPLEX(KIND=8), DIMENSION(-2*Iwbox:), INTENT(IN) :: self
+    !output:
+    COMPLEX(KIND=8), DIMENSION(-Iwbox:,:), INTENT(OUT) :: chi_bubble_slice
+    !subroutine internal variables
+    INTEGER :: j,ix,iy,iNx,iNy,igx,igy,ind
+    REAl(KIND=8) :: pi,ek,ekq
+    COMPLEX(KIND=8), ALLOCATABLE :: w(:)
+
+    pi=dacos(-1.0d0)
+    ALLOCATE(w(-2*Iwbox:2*Iwbox-1))
+    DO j=-2*Iwbox,2*Iwbox-1
+       w(j)=dcmplx(0.0d0,(pi/beta)*dfloat(2*j+1))+mu-self(j)
+    ENDDO
+    
+    chi_bubble_slice=dcmplx(0.0d0,0.0d0)
+
+    ix=LQ-1
+    DO igx=1, Ng
+       DO igy=1, Ng
+          DO iNx=0,Nint-1
+             DO iNy=0,Nint-1
+                ek=eps(dcok(iNx,igx),dcok(iNy,igy), &
+                     1.d0,1.d0,0.d0,0.d0,0.d0,0.d0)
+                DO iy=0,ix
+                   ekq=eps(dcok(iNx,igx),dcok(iNy,igy), &
+                        -1d0,dcoq(iy),dsik(iNx,igx),dsik(iNy,igy), &
+                        0.0d0,dsiq(iy))
+                   DO j=-iwbox,iwbox-1
+                      chi_bubble_slice(j,iy+1)=chi_bubble_slice(j,iy+1)- &
+                           ws(igx)*ws(igy)/((w(j)-ek)*(w(j+i)-ekq))
+                   ENDDO
+                ENDDO
+             ENDDO
+          ENDDO
+       ENDDO
+    ENDDO
+
+    chi_bubble_slice=beta*chi_bubble_slice/ &
+         ((2.0d0*dfloat(Nint))**2)
+    
+    DEALLOCATE(w)
+
+  END SUBROUTINE calc_bubble_slice
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  REAL(KIND=8) FUNCTION find_qmax(mu,beta,Iwbox,self,LQ,Nint,gamma)
+    ! input
+    INTEGER, INTENT(IN) :: Nint, LQ, Iwbox
+    REAL(KIND=8), INTENT(IN) :: mu, beta
+    COMPLEX(KIND=8), DIMENSION(-2*Iwbox:), INTENT(IN) :: self
+    COMPLEX(KIND=8), DIMENSION(-Iwbox:,-Iwbox:), INTENT(IN) :: gamma
+    ! subroutine internal variables
+    INTEGER :: qsteps,ix,iy,iq
+    INTEGER, PARAMETER :: k_number=1
+    REAL(KIND=8) :: qmin, qmax, qmax_old, qmin_old
+    REAL(KIND=8), DIMENSION(1,1:2) :: klist
+    REAL(KIND=8), DIMENSION(:,:), ALLOCATABLE :: dcok,dsik,dcol,dsil
+    REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: dcoq,dsiq,Qv
+    REAL(KIND=8) :: qy,Q0b
+    COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: chimax_x0
+    COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: chi_bubble_slice
+
+    ALLOCATE(chi_bubble_slice(-Iwbox:Iwbox-1,1:LQ))   !for the qmax determination
+    ALLOCATE(chimax_x0(1:LQ))
+    !allocate arrays containing cos and sin functions evaluated for all momenta in the k'-, q- and k-grid
+    ALLOCATE(Qv(0:LQ-1))
+    !k'-grid
+    ALLOCATE(dcok(0:Nint-1,Ng))
+    ALLOCATE(dsik(0:Nint-1,Ng))
+    !q-grid
+    ALLOCATE(dcoq(0:LQ-1))
+    ALLOCATE(dsiq(0:LQ-1))
+    !k-grid
+    ALLOCATE(dcol(k_number,2))
+    ALLOCATE(dsil(k_number,2))
+    klist=0d0
+
+    qmin=0d0
+    qmax=dacos(-1.0d0)     
+    qmax_old=qmax
+    qmin_old=qmin
+    ix=LQ-1
+    DO qsteps=1,qmaxsteps
+       !initialize the cos()- and sin()-arrays for the three momenta
+       CALL init_arrays(Nint,LQ,1,klist,qmin,qmax,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
+       !calculate bare susceptibility (bubble term)
+       CALL calc_bubble_slice(mu,beta,Iwbox,0,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble_slice)
+       DO iy=0,ix
+          qy = Qv(iy)
+          
+          !calculate chi (without lambda correction)
+          chimax_x0(iy+1)=calc_chi(Iwbox,beta,gamma, &
+               chi_bubble_slice(:,iy+1))
+          
+          IF(REAL(chimax_x0(iy+1)) .EQ. 0d0) THEN
+             WRITE(6,*)'Warning: ChiS is zero!'
+          ENDIF
+          
+       ENDDO
+       iq=MINLOC(1d0/REAL(chimax_x0),1)-1
+       IF((iq.EQ.LQ-1 .OR. iq.EQ.0) .AND. qsteps.EQ.1) THEN
+          qmax=Qv(LQ-1)
+          qmin=Qv(0)
+          EXIT
+       ELSE IF(iq.EQ.LQ-1) THEN
+          qmax=qmax_old
+          qmin=Qv(iq-1)
+       ELSE IF(iq.EQ.0) THEN
+          qmin=qmin_old
+          qmax=Qv(iq+1)
+       ELSE
+          qmin_old=qmin
+          qmin=Qv(iq-1)
+          qmax_old=qmax
+          qmax=Qv(iq+1)
+       ENDIF
+       WRITE(6,*) qsteps, qmin, qmax
+       IF(ABS(qmax_old-qmax).LT.qmaxprec) THEN
+          EXIT
+       ENDIF
+    ENDDO
+    find_qmax=qmax
+  END FUNCTION find_qmax
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   !computes subsceptibilites (without lambda correction!)
   !input: indices ix, iy for the q-point (Qv(ix),Qv(iy)), lambda_spin (x), lambda_charge(x_ch)

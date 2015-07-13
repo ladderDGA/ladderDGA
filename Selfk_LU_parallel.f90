@@ -201,8 +201,6 @@ PROGRAM self_k
   ALLOCATE(chich_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
   ALLOCATE(chisp_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
   
-  qmax=-dacos(1.0d0)   !max_q[chi(q,omega=0)], not yet implemented -> set to pi!!!!
-
   !allocate klist (contains list of external k-points)
   ALLOCATE(klist(k_number,2))
   !read external k-points (only rank 0)
@@ -223,14 +221,23 @@ PROGRAM self_k
   !k-grid
   ALLOCATE(dcol(k_number,2))
   ALLOCATE(dsil(k_number,2))
+
+  !determine maximum value of Re(ChiS(w=0,q=(pi,qy))) w.r.t qy
+  IF(i.EQ.0) THEN
+     WRITE(6,*)'determination of qmax'
+     qmax=find_qmax(mu,beta,Iwbox,self,LQ,Nint,gammasp)
+     WRITE(6,*)'qmax= ',qmax
+  ENDIF
+  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(qmax,1,MPI_REAL8,Iwbox-1-shift, &
+       MPI_COMM_WORLD,ierror)
+  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+
   !initialize the cos()- and sin()-arrays for the three momenta
-  CALL init_arrays(Nint,LQ,k_number,klist,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
+  CALL init_arrays(Nint,LQ,k_number,klist,0d0,pi,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
 
   !calculate bare susceptibility (bubble term)
   CALL calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble)
-
-  !here: determination of qmax is possible!!!
-  !CALL init_arrays -> with new qmax!!!
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
