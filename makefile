@@ -9,7 +9,7 @@ TARGET  := Selfk_LU_parallel_2D.x
 #--------------------------------------Sources and header files------------------------------------------
 SRCEXT  := f90
 #SOURCES := $(shell ls -1 $(SRCDIR)/*.$(SRCEXT))
-SOURCES := dispersion.f90 calc_susc.f90 sigma.f90 read.f90 write.f90 vardef.f90 lambda_correction.f90 Selfk_LU_parallel_2D.f90
+SOURCES := dispersion.f90 calc_susc.f90 sigma.f90 read.f90 write.f90 vardef.f90 lambda_correction.f90 Selfk_LU_parallel.f90
 #OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 OBJECTS := $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 
