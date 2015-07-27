@@ -19,7 +19,7 @@ CONTAINS
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,-Iwbox:), INTENT(IN) :: fupdown
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,-Iwbox:), INTENT(IN) :: gammach,gammasp
     !output: chi_ch_loc(omega), chi_sp_loc(omega), local self-energy calculated with DGA equation
-    COMPLEX(KIND=8), DIMENSION(-Iwbox:), INTENT(OUT) :: self_loc
+    COMPLEX(KIND=8), DIMENSION(0:), INTENT(OUT) :: self_loc
 !    COMPLEX(KIND=8), INTENT(OUT) :: chich_loc,chisp_loc
     !subroutine internal variables
     INTEGER :: j,k
@@ -36,8 +36,8 @@ CONTAINS
     ALLOCATE(selftempsp(-Iwbox:Iwbox-1,-Iwbox:Iwbox-1))
     ALLOCATE(selfphich(-Iwbox:Iwbox-1,-Iwbox:Iwbox-1))
     ALLOCATE(selfphisp(-Iwbox:Iwbox-1,-Iwbox:Iwbox-1))
-    ALLOCATE(vrgch(-Iwbox:Iwbox-1))
-    ALLOCATE(vrgsp(-Iwbox:Iwbox-1))
+    ALLOCATE(vrgch(0:Iwbox-1))
+    ALLOCATE(vrgsp(0:Iwbox-1))
     ALLOCATE(ipiv(1:2*Iwbox))
     ALLOCATE(workinv(1:20*Iwbox))
     Mmat=2*Iwbox
@@ -74,32 +74,37 @@ CONTAINS
     CALL ZGETRF(Mmat,Mmat,selfphisp,Mmat,ipiv,infoinv)
     CALL ZGETRI(Mmat,selfphisp,Mmat,ipiv,workinv,10*Mmat,infoinv)
     
-    chich_loc=dcmplx(0.d0,0.d0)
-    chisp_loc=dcmplx(0.d0,0.d0) 
-    DO j=-Iwbox,Iwbox-1 
+    DO j=0,Iwbox-1 
        vrgch(j)=dcmplx(0.d0,0.d0)
        vrgsp(j)=dcmplx(0.d0,0.d0)
        DO k=-Iwbox,Iwbox-1
-          chich_loc=chich_loc+selftempch(k,j)
           vrgch(j)=vrgch(j)+selfphich(k,j)
-          chisp_loc=chisp_loc+selftempsp(k,j)
           vrgsp(j)=vrgsp(j)+selfphisp(k,j) 
        ENDDO
        vrgch(j)=vrgch(j)/(-beta*gww(j)*gww(j+i))
        vrgsp(j)=vrgsp(j)/(-beta*gww(j)*gww(j+i))
     ENDDO
-    
+
+    chich_loc=dcmplx(0.d0,0.d0)
+    chisp_loc=dcmplx(0.d0,0.d0)
+    DO j=-Iwbox,Iwbox-1 
+       DO k=-Iwbox,Iwbox-1
+          chich_loc=chich_loc+selftempch(k,j)
+          chisp_loc=chisp_loc+selftempsp(k,j)
+       ENDDO
+    ENDDO
+  
     chich_loc=chich_loc/beta**2
     chisp_loc=chisp_loc/beta**2
     
-    DO j=-Iwbox,Iwbox-1
+    DO j=0,Iwbox-1
        self_loc(j)= &
             (1.5d0*vrgsp(j)*(1.d0+uhub*chisp_loc)- &
             0.5d0*vrgch(j)*(1.d0-uhub*chich_loc)- &
             1.0d0)*gww(i+j)
     ENDDO
     
-    DO j=-Iwbox,Iwbox-1
+    DO j=0,Iwbox-1
        DO k=-Iwbox,Iwbox-1
           self_loc(j)=self_loc(j)-gww(k)*gww(k+i)* &
                fupdown(j,k)*gww(i+j)*beta
@@ -137,16 +142,17 @@ CONTAINS
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,-Iwbox:), INTENT(IN) :: gammach,gammasp
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,:), INTENT(IN) :: chi_bubble
     COMPLEX(KIND=8), DIMENSION(:), INTENT(IN) :: chich_x0,chisp_x0
-    !output: chi_ch_loc(omega), chi_sp_loc(omega), local self-energy calculated with DGA equation
-    COMPLEX(KIND=8), DIMENSION(:,-Iwbox:), INTENT(OUT) :: selflist,selflistch
-    COMPLEX(KIND=8), DIMENSION(:,-Iwbox:), INTENT(OUT) :: selflistsp,selflistrest
+    !output: chi_ch_loc(omega), chi_sp_loc(omega), self-energy calculated with DGA equation
+    COMPLEX(KIND=8), DIMENSION(:,0:), INTENT(OUT) :: selflist,selflistch
+    COMPLEX(KIND=8), DIMENSION(:,0:), INTENT(OUT) :: selflistsp,selflistrest
     !subroutine internal variables
     INTEGER :: j,k,ix,iy,iz,s,t,r,i1,perm,ind
     REAL(KIND=8) :: a,b,c,chich,chisp,pi,Q0b
     REAL(KIND=8), DIMENSION(:,:,:), ALLOCATABLE :: eklist
     COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: selfphich,selfphisp
     COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: vrgch,vrgsp
-    COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: w,chi0,chi0ch,chi0sp,chi0rest
+    COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: w
+    COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: chi0,chi0ch,chi0sp,chi0rest
     !variable for lapack inversion subroutines
     INTEGER :: infoinv,Mmat
     INTEGER, DIMENSION(:), ALLOCATABLE :: ipiv
@@ -155,15 +161,15 @@ CONTAINS
     ALLOCATE(w(-2*Iwbox:2*Iwbox-1))
     ALLOCATE(selfphich(-Iwbox:Iwbox-1,-Iwbox:Iwbox-1))
     ALLOCATE(selfphisp(-Iwbox:Iwbox-1,-Iwbox:Iwbox-1))
-    ALLOCATE(vrgch(-Iwbox:Iwbox-1))
-    ALLOCATE(vrgsp(-Iwbox:Iwbox-1))
+    ALLOCATE(vrgch(0:Iwbox-1))
+    ALLOCATE(vrgsp(0:Iwbox-1))
     ALLOCATE(ipiv(1:2*Iwbox))
     ALLOCATE(workinv(1:20*Iwbox))
     Mmat=2*Iwbox
-    ALLOCATE(chi0(-Iwbox:Iwbox-1))
-    ALLOCATE(chi0ch(-Iwbox:Iwbox-1))
-    ALLOCATE(chi0sp(-Iwbox:Iwbox-1))
-    ALLOCATE(chi0rest(-Iwbox:Iwbox-1))
+    ALLOCATE(chi0(0:Iwbox-1))
+    ALLOCATE(chi0ch(0:Iwbox-1))
+    ALLOCATE(chi0sp(0:Iwbox-1))
+    ALLOCATE(chi0rest(0:Iwbox-1))
     ALLOCATE(eklist(k_number,8,6))
 
     pi=dacos(-1.0d0)
@@ -175,7 +181,7 @@ CONTAINS
     ENDDO
 
     !Initalize selflists
-    DO j=-Iwbox,Iwbox-1
+    DO j=0,Iwbox-1
        DO i1=1,k_number
           selflist(i1,j)=dcmplx(0.0d0,0.0d0)
           selflistch(i1,j)=dcmplx(0.0d0,0.0d0)
@@ -275,7 +281,7 @@ CONTAINS
              CALL ZGETRF(Mmat,Mmat,selfphisp,Mmat,ipiv,infoinv)
              CALL ZGETRI(Mmat,selfphisp,Mmat,ipiv,workinv,10*Mmat,infoinv)
           
-             DO j=-Iwbox,Iwbox-1 
+             DO j=0,Iwbox-1 
                 vrgch(j)=dcmplx(0.d0,0.d0)
                 vrgsp(j)=dcmplx(0.d0,0.d0)
                 DO k=-Iwbox,Iwbox-1
@@ -287,7 +293,7 @@ CONTAINS
              ENDDO
           
              !compute Sigma_q
-             DO j=-Iwbox,Iwbox-1
+             DO j=0,Iwbox-1
                 chi0(j)=dcmplx(0.0d0,0.0d0)
                 chi0ch(j)=dcmplx(0.0d0,0.0d0)
                 chi0sp(j)=dcmplx(0.0d0,0.0d0)
@@ -300,7 +306,7 @@ CONTAINS
                         (1.5d0*gammasp(j,k)-0.5d0*gammach(j,k)+fupdown(j,k))
                 ENDDO
              ENDDO
-             DO j=-Iwbox,Iwbox-1
+             DO j=0,Iwbox-1
                 chi0(j)=(chi0(j)+1.5d0*vrgsp(j)* &
                      (1.d0+uhub*chisp)-0.5d0*vrgch(j)* &
                      (1.d0-uhub*chich)-1.5d0+0.5d0)*uhub/beta
@@ -311,7 +317,7 @@ CONTAINS
                 chi0rest(j)=(chi0rest(j))*uhub/beta
              ENDDO
           
-             DO j=-Iwbox,Iwbox-1
+             DO j=0,Iwbox-1
                 DO s=1,8
                    DO i1=1,k_number
                       DO perm=1,6 ! permutations of fully irreducible BZ
