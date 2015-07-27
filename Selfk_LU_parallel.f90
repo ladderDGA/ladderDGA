@@ -123,21 +123,21 @@ PROGRAM self_k
 
   !calculate local self-energy with DGA equation
   !output: selfloc(nu,i), chich_loc(i), chisp_loc(i) for bosonic index i
-  ALLOCATE(selfloc(-Iwbox:Iwbox-1))
+  ALLOCATE(selfloc(0:Iwbox-1))
   CALL calc_self_loc(Iwbox,i,uhub,beta,gww,fupdown,gammach,gammasp, &
        selfloc)
   !sum self(nu,i) over bosonic index i
-  ALLOCATE(selfloc_res(-Iwbox:Iwbox-1))
+  ALLOCATE(selfloc_res(0:Iwbox-1))
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  CALL MPI_REDUCE(selfloc,selfloc_res,2*Iwbox, MPI_COMPLEX16, &
+  CALL MPI_REDUCE(selfloc,selfloc_res,Iwbox, MPI_COMPLEX16, &
        MPI_SUM,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  DO j=-Iwbox,Iwbox-1
+  DO j=0,Iwbox-1
      selfloc_res(j)=selfloc_res(j)*uhub/beta+uhub/2.d0*nden
   ENDDO
   ! output of local self-energy
   IF (myid.EQ.0) THEN
-     CALL write_self_loc('klist/SELF_LOC_parallel',Iwbox,beta,self(-Iwbox:Iwbox-1),selfloc_res)
+     CALL write_self_loc('klist/SELF_LOC_parallel',Iwbox,beta,self(0:Iwbox-1),selfloc_res)
   ENDIF
 
   !determine bosonices indices for which chich_loc_res, chisp_loc_res < 0 (sum_ind_ch, sum_ind_sp)
@@ -372,14 +372,14 @@ PROGRAM self_k
 
   IF(.NOT.chi_only) THEN
 
-     ALLOCATE(selflist(k_number,-Iwbox:Iwbox-1))
-     ALLOCATE(selflist_res(k_number,-Iwbox:Iwbox-1))
-     ALLOCATE(selflistch(k_number,-Iwbox:Iwbox-1))
-     ALLOCATE(selflistch_res(k_number,-Iwbox:Iwbox-1))
-     ALLOCATE(selflistsp(k_number,-Iwbox:Iwbox-1))
-     ALLOCATE(selflistsp_res(k_number,-Iwbox:Iwbox-1))
-     ALLOCATE(selflistrest(k_number,-Iwbox:Iwbox-1))
-     ALLOCATE(selflistrest_res(k_number,-Iwbox:Iwbox-1))
+     ALLOCATE(selflist(k_number,0:Iwbox-1))
+     ALLOCATE(selflist_res(k_number,0:Iwbox-1))
+     ALLOCATE(selflistch(k_number,0:Iwbox-1))
+     ALLOCATE(selflistch_res(k_number,0:Iwbox-1))
+     ALLOCATE(selflistsp(k_number,0:Iwbox-1))
+     ALLOCATE(selflistsp_res(k_number,0:Iwbox-1))
+     ALLOCATE(selflistrest(k_number,0:Iwbox-1))
+     ALLOCATE(selflistrest_res(k_number,0:Iwbox-1))
 
      CALL calc_self(Iwbox,myid,i,LQ,k_number,uhub,mu,beta,lambdach,lambdasp, &
        self,fupdown,gammach,gammasp, chi_bubble,chich_x0,chisp_x0, &
@@ -388,13 +388,13 @@ PROGRAM self_k
 
      !sum over omega
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-     CALL MPI_REDUCE(selflist,selflist_res,2*Iwbox*k_number, &
+     CALL MPI_REDUCE(selflist,selflist_res,Iwbox*k_number, &
           MPI_COMPLEX16,MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     CALL MPI_REDUCE(selflistch,selflistch_res,2*Iwbox*k_number, &
+     CALL MPI_REDUCE(selflistch,selflistch_res,Iwbox*k_number, &
           MPI_COMPLEX16,MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     CALL MPI_REDUCE(selflistsp,selflistsp_res,2*Iwbox*k_number, &
+     CALL MPI_REDUCE(selflistsp,selflistsp_res,Iwbox*k_number, &
           MPI_COMPLEX16,MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     CALL MPI_REDUCE(selflistrest,selflistrest_res,2*Iwbox*k_number, &
+     CALL MPI_REDUCE(selflistrest,selflistrest_res,Iwbox*k_number, &
           MPI_COMPLEX16,MPI_SUM,0,MPI_COMM_WORLD,ierror)
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
       

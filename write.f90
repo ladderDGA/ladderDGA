@@ -11,14 +11,14 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(IN) :: fname
     INTEGER, INTENT(IN) :: Iwbox
     REAL(KIND=8), INTENT(IN) :: beta
-    COMPLEX(KIND=8), DIMENSION(-Iwbox:), INTENT(IN) :: self,selfloc_res
+    COMPLEX(KIND=8), DIMENSION(0:), INTENT(IN) :: self,selfloc_res
     !subroutine internal variables
     INTEGER :: j
     REAL(KIND=8) :: pi
     
     pi=dacos(-1.0d0)
     OPEN(30,file=fname,form='formatted',status='replace')
-    DO j=-Iwbox,Iwbox-1
+    DO j=0,Iwbox-1
        WRITE(30,'(5f17.10)') dfloat(2*j+1)*pi/beta, &
             dreal(self(j)),dimag(self(j)), &
             dreal(selfloc_res(j)),dimag(selfloc_res(j))
@@ -66,10 +66,10 @@ CONTAINS
     !input
     INTEGER, INTENT(IN) :: Iwbox,k_number
     REAL(KIND=8), INTENT(IN) :: beta
-    COMPLEX(KIND=8), DIMENSION(:,-Iwbox:), INTENT(IN) :: selflist_res,selflistch_res
-    COMPLEX(KIND=8), DIMENSION(:,-Iwbox:), INTENT(IN) :: selflistsp_res,selflistrest_res
+    COMPLEX(KIND=8), DIMENSION(:,0:), INTENT(IN) :: selflist_res,selflistch_res
+    COMPLEX(KIND=8), DIMENSION(:,0:), INTENT(IN) :: selflistsp_res,selflistrest_res
     COMPLEX(KIND=8), DIMENSION(-2*Iwbox:), INTENT(IN) :: self
-    COMPLEX(KIND=8), DIMENSION(-Iwbox:), INTENT(IN) :: selfloc_res
+    COMPLEX(KIND=8), DIMENSION(0:), INTENT(IN) :: selfloc_res
     !subroutine internal variables
     CHARACTER(LEN=50) :: fname
     INTEGER :: i1,j
@@ -81,7 +81,7 @@ CONTAINS
        WRITE(fname,'(A13,I6.6,A4)'),'klist/SELF_Q_',i1,'.dat'
        OPEN(400+i1,file=fname,form='formatted',status='replace')
        WRITE(400+i1,'(A25)')'# iv_n S S_ch S_sp S_rest'
-       DO j=-iwbox,iwbox-1
+       DO j=0,iwbox-1
           self_out=selflist_res(i1,j)-selfloc_res(j)+self(j)
           selfrest_out=selflistrest_res(i1,j)-selfloc_res(j)+self(j)
           WRITE(400+i1,'(9f17.10)')dfloat(2*j+1)*pi/beta, &
