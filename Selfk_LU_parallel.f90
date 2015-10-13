@@ -142,8 +142,8 @@ PROGRAM self_k
 
   !determine bosonices indices for which chich_loc_res, chisp_loc_res < 0 (sum_ind_ch, sum_ind_sp)
   IF (i.GE.0) THEN
-     ind_part_ch=1.0d0/(DSIGN(dfloat(i),dreal(chich_loc)+tolerancech)+0.5d0)
-     ind_part_sp=1.0d0/(DSIGN(dfloat(i),dreal(chisp_loc)+tolerancesp)+0.5d0)
+     ind_part_ch=1.0d0/DSIGN(dfloat(i)+0.5d0,dreal(chich_loc)+tolerancech)
+     ind_part_sp=1.0d0/DSIGN(dfloat(i)+0.5d0,dreal(chisp_loc)+tolerancesp)
   ELSE
      ind_part_ch=1.0d0
      ind_part_sp=1.0d0
@@ -154,10 +154,10 @@ PROGRAM self_k
   CALL MPI_ALLREDUCE(ind_part_sp,ind_sp,1,MPI_REAL8, &
        MPI_MIN,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  sum_ind_ch=INT(1.0d0+DABS(1.0d0/ind_ch))-1
-  sum_ind_sp=INT(1.0d0+DABS(1.0d0/ind_sp))-1
+  sum_ind_ch=INT(DABS(1.0d0/ind_ch))+(INT(DSIGN(1.0d0,ind_ch))-1)/2
+  sum_ind_sp=INT(DABS(1.0d0/ind_sp))+(INT(DSIGN(1.0d0,ind_sp))-1)/2
 
-  IF ((sum_ind_ch.EQ.0).OR.(sum_ind_sp.EQ.0)) THEN
+  IF ((sum_ind_ch.LT.0).OR.(sum_ind_sp.LT.0)) THEN
      WRITE(6,*)'bad chi_loc'
      WRITE(6,*)sum_ind_ch,sum_ind_sp
      CALL MPI_FINALIZE(ierror)
