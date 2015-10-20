@@ -20,6 +20,8 @@ PROGRAM self_k
   CALL MPI_INIT(ierror)
   CALL MPI_COMM_SIZE(MPI_COMM_WORLD,nprocs,ierror)
   CALL MPI_COMM_RANK(MPI_COMM_WORLD,myid,ierror)
+  ALLOCATE(sendstatus(MPI_STATUS_SIZE))
+  ALLOCATE(recvstatus(MPI_STATUS_SIZE))
 
   !reading parameter from file ladderDGA.in:
   !-) uhub...Hubbard interaction
@@ -157,13 +159,6 @@ PROGRAM self_k
   sum_ind_ch=INT(DABS(1.0d0/ind_ch))+(INT(DSIGN(1.0d0,ind_ch))-1)/2
   sum_ind_sp=INT(DABS(1.0d0/ind_sp))+(INT(DSIGN(1.0d0,ind_sp))-1)/2
 
-  IF ((sum_ind_ch.LT.0).OR.(sum_ind_sp.LT.0)) THEN
-     WRITE(6,*)'bad chi_loc'
-     WRITE(6,*)sum_ind_ch,sum_ind_sp
-     CALL MPI_FINALIZE(ierror)
-     STOP
-  ENDIF
-     
   !set chi to 0 for i > sum_ind and save old values in chich_loc_all and chisp_loc_all
   chich_loc_all=chich_loc
   chisp_loc_all=chisp_loc
@@ -198,6 +193,8 @@ PROGRAM self_k
 
   !allocate nonlocal susceptibilities (bare bubble, q-dependent DMFT susceptibility)
   ALLOCATE(chi_bubble(-Iwbox:Iwbox-1,1:(LQ+1)*LQ/2))   !only qx >= qy
+  ALLOCATE(chi_bubble_pos(0:Iwbox-1,1:(LQ+1)*LQ/2))
+  ALLOCATE(chi_bubble_neg(0:Iwbox-1,1:(LQ+1)*LQ/2))
   ALLOCATE(chich_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
   ALLOCATE(chisp_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
   
@@ -237,7 +234,24 @@ PROGRAM self_k
   CALL init_arrays(Nint,LQ,k_number,klist,0d0,pi,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
 
   !calculate bare susceptibility (bubble term)
-  CALL calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble)
+  CALL calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble_pos)
+  !copy chi_bubble for nu>0 to nu<0 by using the symmetry chi_bubble(-nu,omega,q)=dcmplx(chi_bubble(nu,-omega,q))
+  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+  request=MPI_REQUEST_NULL
+  CALL MPI_ISSEND(chi_bubble_pos,Iwbox*LQ*(LQ+1)/2,MPI_COMPLEX16,-myid+2*Iwbox-2,98,MPI_COMM_WORLD,request,ierror)
+  CALL MPI_RECV(chi_bubble_neg,Iwbox*LQ*(LQ+1)/2,MPI_COMPLEX16,-myid+2*Iwbox-2,98,MPI_COMM_WORLD,recvstatus,ierror)
+  CALL MPI_WAIT(request,sendstatus,ierror)
+  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+  DO ind=1,LQ*(LQ+1)/2
+     DO j=-Iwbox,-1
+        chi_bubble(j,ind)=CONJG(chi_bubble_neg(-j-1,ind))
+     ENDDO
+     DO j=0,Iwbox-1
+        chi_bubble(j,ind)=chi_bubble_pos(j,ind)
+     ENDDO
+  ENDDO
+  DEALLOCATE(chi_bubble_pos)
+  DEALLOCATE(chi_bubble_neg)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
@@ -294,7 +308,7 @@ PROGRAM self_k
      CALL MPI_BCAST(chisp_inv_min,1,MPI_COMPLEX16,Iwbox-1-shift, &
           MPI_COMM_WORLD,ierror)
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-     
+          
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !calculate lambda corrections
      

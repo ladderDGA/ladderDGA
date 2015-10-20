@@ -82,7 +82,7 @@ CONTAINS
           WRITE(6,*),'xstep=',xstep+1,' of ',xsteps
           WRITE(6,*),', Chi_DGA_sum=',Chi_DGA_sum
           WRITE(6,*),', Chi_AIM_sum=',Chi_loc_sum
-          WRITE(30,'(I10,5f25.20,4f15.10)')xstep+1,x, &
+          WRITE(30,'(I10,9f30.20)')xstep+1,x, &
                Chi_DGA_sum,Chi_loc_sum, &
                Chi_DGA_der_sum,Chi_DGA_der2_sum
        ENDIF
