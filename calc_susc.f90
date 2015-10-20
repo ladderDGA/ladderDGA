@@ -22,7 +22,7 @@ CONTAINS
     REAL(KIND=8), DIMENSION(0:), INTENT(IN) :: dcoq,dsiq
     COMPLEX(KIND=8), DIMENSION(-2*Iwbox:), INTENT(IN) :: self
     !output:
-    COMPLEX(KIND=8), DIMENSION(-Iwbox:,:), INTENT(OUT) :: chi_bubble
+    COMPLEX(KIND=8), DIMENSION(0:,:), INTENT(OUT) :: chi_bubble
     !subroutine internal variables
     INTEGER :: j,ind,ix,iy,iz,iNx,iNy,iNz,igx,igy,igz
     REAl(KIND=8) :: pi,ek,ekq
@@ -51,7 +51,7 @@ CONTAINS
                                     dcoq(ix),dcoq(iy),dcoq(iz), &
                                     dsik(iNx,igx),dsik(iNy,igy),dsik(iNz,igz), &
                                     dsiq(ix),dsiq(iy),dsiq(iz))
-                               DO j=-iwbox,iwbox-1
+                               DO j=0,iwbox-1
                                   chi_bubble(j,ind)=chi_bubble(j,ind)- &
                                        ws(igx)*ws(igy)*ws(igz)/((w(j)-ek)*(w(j+i)-ekq))
                                ENDDO

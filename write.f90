@@ -49,7 +49,7 @@ CONTAINS
           DO iz=0,iy
              chival=chi(ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1)
              chival_lambda=1.0d0/(1.0d0/chival+lambda)
-             WRITE (30,'(7f17.10)')Qv(ix),Qv(iy),Qv(iz), &
+             WRITE (30,'(7f30.20)')Qv(ix),Qv(iy),Qv(iz), &
                   dreal(chival_lambda),dimag(chival_lambda), &
                   dreal(chival),dimag(chival)
           ENDDO

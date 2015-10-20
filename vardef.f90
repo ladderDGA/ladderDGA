@@ -3,8 +3,9 @@ MODULE vardef
   IMPLICIT NONE
 
   !MPI-variables
-  INTEGER :: myid, nprocs,ierror
-  
+  INTEGER :: myid, nprocs,ierror,request
+  INTEGER, DIMENSION(:), ALLOCATABLE :: sendstatus,recvstatus
+
   REAL(KIND=8), PARAMETER :: pi=DACOS(-1d0)
 
   !variables for file-names
@@ -31,7 +32,7 @@ MODULE vardef
   INTEGER :: sum_ind_ch,sum_ind_sp
 
   !nonlocal susceptibilities
-  COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: chi_bubble, chi_bubble_slice
+  COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: chi_bubble,chi_bubble_pos,chi_bubble_neg,chi_bubble_slice
   COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: chich_x0,chisp_x0
 
   !variables for grids in momentum space
