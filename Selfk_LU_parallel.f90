@@ -159,6 +159,15 @@ PROGRAM self_k
   sum_ind_ch=INT(DABS(1.0d0/ind_ch))+(INT(DSIGN(1.0d0,ind_ch))-1)/2
   sum_ind_sp=INT(DABS(1.0d0/ind_sp))+(INT(DSIGN(1.0d0,ind_sp))-1)/2
 
+  IF (myid.EQ.0) THEN
+     IF (sum_ind_ch.LT.0) THEN
+        WRITE(6,*)'No bosonic frequencies for charge-sum'
+     ENDIF
+     IF (sum_ind_sp.LT.0) THEN
+        WRITE(6,*)'No bosonic frequencies for spin-sum'
+     ENDIF
+  ENDIF
+
   !set chi to 0 for i > sum_ind and save old values in chich_loc_all and chisp_loc_all
   chich_loc_all=chich_loc
   chisp_loc_all=chisp_loc
