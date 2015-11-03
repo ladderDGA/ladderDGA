@@ -175,14 +175,13 @@ CONTAINS
     REAL(KIND=8), DIMENSION(:,:), INTENT(OUT) :: klist
     !subroutine internal variables
     INTEGER :: i
-    REAL(KIND=8) :: kx,ky,kz
+    REAL(KIND=8) :: kx,ky
     
     OPEN(30,file=fname,form='formatted',status='old')
     DO i=1,k_number
-       READ(30,*)kx,ky,kz
+       READ(30,*)kx,ky
        klist(i,1)=kx
        klist(i,2)=ky
-       klist(i,3)=kz
     ENDDO
     CLOSE(30)
     
@@ -199,17 +198,15 @@ CONTAINS
     !output
     COMPLEX(KIND=8), DIMENSION(:), INTENT(OUT) :: chi_x0
     !subroutine internal variables
-    INTEGER :: ix,iy,iz
+    INTEGER :: ix,iy
     REAL(KIND=8) :: mom,re,im,rel0,iml0
 
     OPEN(30,file=fname,form='formatted',status='old')
 
     DO ix=0,LQ-1
        DO iy=0,ix
-          DO iz=0,iy
-             READ (30,*)mom,mom,mom,re,im,rel0,iml0
-             chi_x0(ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1)=dcmplx(rel0,iml0)
-          ENDDO
+          READ (30,*)mom,mom,re,im,rel0,iml0
+          chi_x0(ix*(ix+1)/2+iy+1)=dcmplx(rel0,iml0)
        ENDDO
     ENDDO
     CLOSE(30)

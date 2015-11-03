@@ -1,0 +1,10 @@
+c AIM parameters: U, mu, beta, nden
+2.0d0      1.0d0       13.0d0       1.0d0
+c Iwbox
+40
+c linear size of k_grid for self-energy, number of energies for occupation density
+50     100
+c range of energy for occupation number: lower bound, upper bound; energy-cutoff around the fermi-energy
+-1.0d0     1.0d0     1000.0d0
+c Perform calculations for: U=0?, DMFT?, DGA?,
+.TRUE.     .TRUE.     .TRUE.
