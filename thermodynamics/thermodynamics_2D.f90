@@ -132,7 +132,7 @@ PROGRAM thermodynamics
      CALL MPI_BCAST(self_loc,4*Iwbox,MPI_COMPLEX16,0,MPI_COMM_WORLD,ierror)
      CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
      DO j=k_min,k_max
-        self(j,:)=self_loc(-Iwbox:Iwbox-1)
+        self(j,:)=self_loc(0:Iwbox-1)
      ENDDO
      CALL calc_energies(Iwbox,k_min,k_max,k_range,kcount,epssteps, &
           uhub,mu,beta,nden,fermicut,epsmin,epsmax,dcol,self,en,n_eps,testsum,testsum_eps)
