@@ -34,20 +34,20 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   SUBROUTINE read_parameters_thermo(fname,calcU0,calcDMFT,calcDGA, &
-       uhub,mu,beta,nden,Iwbox,k_range,epssteps,epsmin,epsmax,fermicut)
+       uhub,mu,beta,nden,ap,Iwbox,k_range,epssteps,epsmin,epsmax,fermicut)
     
     !input: filename of parameter file
     CHARACTER(LEN=*), INTENT(IN) :: fname
     !input: Parameters
     LOGICAL, INTENT(OUT) :: calcU0,calcDMFT,calcDGA
     REAL(KIND=8), INTENT(OUT) :: uhub,mu,beta,nden
-    INTEGER, INTENT(OUT) :: Iwbox,k_range,epssteps
+    INTEGER, INTENT(OUT) :: Iwbox,k_range,epssteps,ap
     REAL(KIND=8), INTENT(OUT) :: epsmin,epsmax,fermicut
     
     !reading AIM/DMFT and lambda-correction parameters from file "fname"
     OPEN(30,file=fname,form='formatted',status='old')
     READ(30,*) 
-    READ(30,*) uhub, mu, beta, nden
+    READ(30,*) uhub, mu, beta, nden, ap  !(ap...Number of Anderson Parameters in DMFT)
     READ(30,*) 
     READ(30,*) Iwbox
     READ(30,*) 
@@ -59,6 +59,31 @@ CONTAINS
     CLOSE(30)
     
   END SUBROUTINE read_parameters_thermo
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  SUBROUTINE read_anderson_parameters(fname,ap,v)
+    
+    !input:
+    CHARACTER(LEN=*), INTENT(IN) :: fname
+    INTEGER, INTENT(IN) :: ap
+    !output:
+    REAL(KIND=8), DIMENSION(:), INTENT(OUT) :: v
+    !subroutine internal variables
+    INTEGER :: i
+    REAL(KIND=8) :: indat
+
+    OPEN(30,file=fname,form='formatted',status='old')
+    DO i=1,10+ap
+       READ(30,*)
+    ENDDO
+    DO i=1,ap
+       READ(30,*)indat
+       v(i)=indat
+    ENDDO
+    CLOSE(30)
+
+  END SUBROUTINE read_anderson_parameters
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

@@ -22,7 +22,7 @@ PROGRAM thermodynamics
   !only rank 0 reads the parameters
   IF (myid.EQ.0) THEN
      CALL read_parameters_thermo('ladderDGA_thermo.in',calcU0,calcDMFT,calcDGA, &
-          uhub,mu,beta,nden,Iwbox,k_range,epssteps,epsmin,epsmax,fermicut)
+          uhub,mu,beta,nden,ap,Iwbox,k_range,epssteps,epsmin,epsmax,fermicut)
   ENDIF
 
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
@@ -147,13 +147,21 @@ PROGRAM thermodynamics
         CALL write_occupation('occupationDMFT.dat',epssteps,epsmin,epsmax,n_eps_sum)
      ENDIF
      IF (myid.EQ.0) THEN
+        ALLOCATE(v(1:ap))
+        CALL read_anderson_parameters('hubb.andpar',ap,v)
+        vsum=0.0d0
+        DO j=1,ap
+           vsum=vsum+(v(j))**2
+        ENDDO
         en=dcmplx(0.0d0,0.0d0)
         sigma_hartree=uhub*nden/2.0d0
         !DMFT self-energy without k-sum (calculated with g_loc=gww)
         DO j=0,Iwbox-1
            w=dcmplx(0.0d0,dfloat(2*j+1))*pi/beta
-           !plain sum for potential energy
+           !plain sum for kinetic energy
            en(j,1)=en(j-1,1)+2.0d0*dreal((w+mu-self_loc(j))*gww(j)-1.0d0)
+           !1/nu^2-term subtracted and analytically evaluated
+           en(j,2)=en(j-1,2)+2.0d0*dreal((w+mu-self_loc(j))*gww(j)-1.0d0-vsum/w**2)
            !plain sum for potential energy (1/nu-term does not contribute in finite symmetric sum!)
            en(j,3)=en(j-1,3)+2.0d0*dreal(self_loc(j)*gww(j))
            !1/nu^2-term subtracted and analytically evaluated
@@ -162,6 +170,7 @@ PROGRAM thermodynamics
                 sigma_hartree*(sigma_hartree-mu))/w**2)
         ENDDO
         en(:,1)=en(:,1)*2.0d0/beta
+        en(:,2)=(en(:,2)-vsum*beta**2/4)*2.0d0/beta
         en(:,3)=en(:,3)/beta+0.50d0*sigma_hartree
         en(:,4)=en(:,4)/beta+0.50d0*sigma_hartree- &
              0.250d0*beta*(uhub**2*0.50d0*nden*(1.0d0-0.50d0*nden)- &
@@ -182,6 +191,7 @@ PROGRAM thermodynamics
         CALL write_occupation('occup_dmft_nusum.dat',epssteps,epsmin,epsmax,n_eps)
         DEALLOCATE(self_loc)
         DEALLOCATE(gww)
+        DEALLOCATE(v)
      ENDIF
   ENDIF
 

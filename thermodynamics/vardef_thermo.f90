@@ -9,13 +9,17 @@ MODULE vardef_thermo
 
   !parameters read in from ladderDGA_thermo.in
   REAL(KIND=8) :: uhub,mu,beta,nden,fermicut,epsmin,epsmax
-  INTEGER :: Iwbox,k_range,epssteps
+  INTEGER :: Iwbox,k_range,epssteps,ap
   LOGICAL :: calcU0,calcDMFT,calcDGA
 
 
   !Auxilliary variables
   REAL(KIND=8) :: sigma_hartree,epoint
   COMPLEX(KIND=8) :: g,w
+
+  !Anderson parameters of DMFT
+  REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: v
+  REAL(KIND=8) :: vsum
 
   !local selfenergy and green's function (needed for DMFT only)
   COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: self_loc,gww

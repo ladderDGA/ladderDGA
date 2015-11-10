@@ -1,5 +1,5 @@
 c AIM parameters: U, mu, beta, nden
-0.0d0      0.0d0       0.0d0       0.0d0
+0.0d0      0.0d0       0.0d0       0.0d0   0
 c Iwbox
 0
 c linear size of k_grid for self-energy, number of energies for occupation density
