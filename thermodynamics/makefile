@@ -3,13 +3,13 @@
 FC      := mpif90
 #SRCDIR  := .
 BUILDDIR := build
-TARGET  := thermodynamics_2D.x
+TARGET  := thermodynamics_3D.x
 
 
 #--------------------------------------Sources and header files------------------------------------------
 SRCEXT  := f90
 #SOURCES := $(shell ls -1 $(SRCDIR)/*.$(SRCEXT))
-SOURCES := dispersion.f90  read.f90 write.f90 vardef_thermo.f90 thermo.f90 thermodynamics_2D.f90
+SOURCES := dispersion.f90  read.f90 write.f90 vardef_thermo.f90 thermo.f90 thermodynamics_3D.f90
 #OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 OBJECTS := $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 

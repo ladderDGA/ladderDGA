@@ -34,7 +34,7 @@ MODULE vardef_thermo
   REAL(KIND=8), DIMENSION(:,:), ALLOCATABLE :: klist_tot,klist,dcol
 
   !variables for controlling loops
-  INTEGER :: i,j,ix,iy,ind,ieps
+  INTEGER :: i,j,ix,iy,iz,ind,ieps
 
   !self-energy for the energy-subroutine: 1) 0 for U=0, 2) sigma_dmft for DMFT 3) sigma_DGA
   COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: self

@@ -22,7 +22,7 @@ CONTAINS
     COMPLEX(KIND=8), DIMENSION(-1:,:), INTENT(OUT) :: en
     COMPLEX(KIND=8), DIMENSION(0:,:), INTENT(OUT) :: n_eps
     !subroutine internal variables
-    INTEGER :: j,ix,iy,ind,ieps
+    INTEGER :: j,ix,iy,iz,ind,ieps
     REAL(KIND=8) :: pi,sigma_hartree,energy,mult
     REAL(KIND=8), DIMENSION(:), ALLOCATABLE :: weight
     COMPLEX(KIND=8) :: ekin_correct1,ekin_correct2,epot_correct1,epot_correct2,gk
@@ -58,12 +58,15 @@ CONTAINS
     ENDDO
 
     DO ind=k_min,k_max
-       energy=eps(dcol(ind,1),dcol(ind,2),1d0,1d0,0d0,0d0,0d0,0d0)
+       energy=eps(dcol(ind,1),dcol(ind,2),dcol(ind,3),1d0,1d0,1d0,0d0,0d0,0d0,0d0,0d0,0d0)
        n_k=dcmplx(0.0d0,0.0d0)
        IF (DABS(energy).LT.fermicut) THEN
           ix=kcount(ind,1)
           iy=kcount(ind,2)
-          mult=weight(ix)*weight(iy)*dfloat(2/((1+iy)/(1+ix)+1))
+          iz=kcount(ind,3)
+          mult=weight(ix)*weight(iy)*weight(iz)*dfloat(6/ &
+               ((1+iy)/(1+ix)+(1+iz)/(1+iy)+ &
+               3*((1+iz)/(1+ix))+1))
           DO j=0,Iwbox-1
              !define the Greens-funktion
              gk=1.0d0/(w(j)+mu-energy-self(ind,j))

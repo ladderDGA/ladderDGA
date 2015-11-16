@@ -39,18 +39,20 @@ CONTAINS
     REAL(KIND=8), DIMENSION(0:), INTENT(IN) :: Qv
     COMPLEX(KIND=8), DIMENSION(:), INTENT(IN) :: chi
     !subroutine internal variables
-    INTEGER :: ix,iy
+    INTEGER :: ix,iy,iz
     COMPLEX(KIND=8) :: chival,chival_lambda
 
     OPEN(30,file=fname,form='formatted',status='replace')
 
     DO ix=0,LQ-1
        DO iy=0,ix
-          chival=chi(ix*(ix+1)/2+iy+1)
-          chival_lambda=1.0d0/(1.0d0/chival+lambda)
-          WRITE (30,'(6f30.20)')Qv(ix),Qv(iy), &
-               dreal(chival_lambda),dimag(chival_lambda), &
-               dreal(chival),dimag(chival)
+          DO iz=0,iy
+             chival=chi(ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1)
+             chival_lambda=1.0d0/(1.0d0/chival+lambda)
+             WRITE (30,'(7f30.20)')Qv(ix),Qv(iy),Qv(iz), &
+                  dreal(chival_lambda),dimag(chival_lambda), &
+                  dreal(chival),dimag(chival)
+          ENDDO
        ENDDO
     ENDDO
     CLOSE(30)
@@ -79,7 +81,7 @@ CONTAINS
     pi=dacos(-1.0d0)
     DO i1=1,k_number
        WRITE(fname,'(A13,I6.6,A4)'),'klist/SELF_Q_',i1,'.dat'
-       OPEN(400+i1,file=fname,form='formatted',status='replace')
+       OPEN(400+i1,file=fname,form='formatted', status='replace')
        WRITE(400+i1,'(A25)')'# iv_n S S_ch S_sp S_rest'
        DO j=0,iwbox-1
           self_out=selflist_res(i1,j)-selfloc_res(j)+self(j)

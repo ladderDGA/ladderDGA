@@ -41,7 +41,7 @@ PROGRAM thermodynamics
   CALL MPI_BCAST(calcDGA,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
 
-  knumber_tot=(k_range+1)*(k_range+2)/2
+  knumber_tot=(k_range+1)*(k_range+2)*(k_range+3)/6
   knumber=(knumber_tot)/nprocs
   krest=MOD(knumber_tot,nprocs)
   DO i=0,nprocs-1
@@ -63,19 +63,22 @@ PROGRAM thermodynamics
   ENDIF
   k_min=koffset+1
   k_max=koffset+knumber
-  !mapping: total index for a given k-point -> (ix,iy)-coordinate in k-grid
-  ALLOCATE(kcount(k_min:k_max,2))
+  !mapping: total index for a given k-point -> (ix,iy,iz)-coordinate in k-grid
+  ALLOCATE(kcount(k_min:k_max,3))
   DO ix=0,k_range
      DO iy=0,ix
-        ind=ix*(ix+1)/2+iy+1
-        IF ((ind.GE.k_min).AND.(ind.LE.k_max)) THEN
-           kcount(ind,1)=ix
-           kcount(ind,2)=iy
-        ENDIF
+        DO iz=0,iy
+           ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
+           IF ((ind.GE.k_min).AND.(ind.LE.k_max)) THEN
+              kcount(ind,1)=ix
+              kcount(ind,2)=iy
+              kcount(ind,3)=iz
+           ENDIF
+        ENDDO
      ENDDO
   ENDDO
-  ALLOCATE(klist_tot(knumber_tot,2))
-  ALLOCATE(klist(k_min:k_max,2))
+  ALLOCATE(klist_tot(knumber_tot,3))
+  ALLOCATE(klist(k_min:k_max,3))
   IF (myid.EQ.0) THEN
      CALL read_klist('klist.dat',knumber_tot,klist_tot)
   ENDIF
@@ -84,14 +87,17 @@ PROGRAM thermodynamics
        klist(:,1),knumber,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
   CALL MPI_SCATTERV(klist_tot(:,2),recvnumber,offsetnum,MPI_REAL8, &
        klist(:,2),knumber,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_SCATTERV(klist_tot(:,3),recvnumber,offsetnum,MPI_REAL8, &
+       klist(:,3),knumber,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
   DEALLOCATE(klist_tot)
 
   !cos(k) for all k-values of each process
-  ALLOCATE(dcol(k_min:k_max,2))
+  ALLOCATE(dcol(k_min:k_max,3))
   DO j=k_min,k_max
      dcol(j,1)=dcos(klist(j,1))
      dcol(j,2)=dcos(klist(j,2))
+     dcol(j,3)=dcos(klist(j,3))
   ENDDO
 
   !self-energy (self) for which kinetic and potential energy (en(:,1:4)) are calculated
@@ -108,10 +114,10 @@ PROGRAM thermodynamics
           0.0d0,0.0d0,beta,nden,fermicut,epsmin,epsmax,dcol,self,en,n_eps,testsum,testsum_eps)
      CALL MPI_REDUCE(en,en_sum,4*(Iwbox+1),MPI_COMPLEX16, &
           MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     en_sum=en_sum/dfloat(k_range)**2
+     en_sum=en_sum/dfloat(k_range)**3
      CALL MPI_REDUCE(n_eps,n_eps_sum,2*(epssteps+1),MPI_COMPLEX16, &
           MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     n_eps_sum=n_eps_sum/dfloat(k_range)**2
+     n_eps_sum=n_eps_sum/dfloat(k_range)**3
      IF (myid.EQ.0) THEN
         CALL write_energies('energiesU0.dat',Iwbox,beta,en_sum)
         CALL write_occupation('occupationU0.dat',epssteps,epsmin,epsmax,n_eps_sum)
@@ -138,10 +144,10 @@ PROGRAM thermodynamics
           uhub,mu,beta,nden,fermicut,epsmin,epsmax,dcol,self,en,n_eps,testsum,testsum_eps)
      CALL MPI_REDUCE(en,en_sum,4*(Iwbox+1),MPI_COMPLEX16, &
           MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     en_sum=en_sum/dfloat(k_range)**2
+     en_sum=en_sum/dfloat(k_range)**3
      CALL MPI_REDUCE(n_eps,n_eps_sum,2*(epssteps+1),MPI_COMPLEX16, &
           MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     n_eps_sum=n_eps_sum/dfloat(k_range)**2
+     n_eps_sum=n_eps_sum/dfloat(k_range)**3
      IF (myid.EQ.0) THEN
         CALL write_energies('energiesDMFT.dat',Iwbox,beta,en_sum)
         CALL write_occupation('occupationDMFT.dat',epssteps,epsmin,epsmax,n_eps_sum)
@@ -214,10 +220,10 @@ PROGRAM thermodynamics
           uhub,mu,beta,nden,fermicut,epsmin,epsmax,dcol,self,en,n_eps,testsum,testsum_eps)
      CALL MPI_REDUCE(en,en_sum,4*(Iwbox+1),MPI_COMPLEX16, &
           MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     en_sum=en_sum/dfloat(k_range)**2
+     en_sum=en_sum/dfloat(k_range)**3
      CALL MPI_REDUCE(n_eps,n_eps_sum,2*(epssteps+1),MPI_COMPLEX16, &
           MPI_SUM,0,MPI_COMM_WORLD,ierror)
-     n_eps_sum=n_eps_sum/dfloat(k_range)**2
+     n_eps_sum=n_eps_sum/dfloat(k_range)**3
      IF (myid.EQ.0) THEN
         CALL write_energies('energiesDGA.dat',Iwbox,beta,en_sum)
         CALL write_occupation('occupationDGA.dat',epssteps,epsmin,epsmax,n_eps_sum)
@@ -226,10 +232,10 @@ PROGRAM thermodynamics
 
   CALL MPI_REDUCE(testsum,testsum_sum,1,MPI_REAL8, &
        MPI_SUM,0,MPI_COMM_WORLD,ierror)
-  testsum_sum=testsum_sum/dfloat(k_range)**2
+  testsum_sum=testsum_sum/dfloat(k_range)**3
   CALL MPI_REDUCE(testsum_eps,testsum_eps_sum,1,MPI_REAL8, &
        MPI_SUM,0,MPI_COMM_WORLD,ierror)
-  testsum_eps_sum=testsum_eps_sum/dfloat(k_range)**2
+  testsum_eps_sum=testsum_eps_sum/dfloat(k_range)**3
   IF (myid.EQ.0) THEN
      WRITE(6,*)testsum_sum
      WRITE(6,*)testsum_eps_sum
