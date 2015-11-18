@@ -8,3 +8,5 @@ c Should only sigma be calculated?, lmabdach, lambdasp (chich_omega(x=0) and chi
 .FALSE.     0.0d0     0.0d0
 c Should only chis_omega and chich_omega be calculated?
 .FALSE.
+c Should a lambda-correction be performed only in the spin-channel?
+.FALSE.

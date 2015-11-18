@@ -262,6 +262,21 @@ PROGRAM self_k
   DEALLOCATE(chi_bubble_pos)
   DEALLOCATE(chi_bubble_neg)
 
+!  open(myid+100)
+!  do ix=0,LQ-1
+!     do iy=0,ix
+!        do iz=0,iy
+!           ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
+!           do j=-Iwbox,Iwbox-1
+!              write(myid+100,'(3f17.10,2f30.20)')Qv(ix),Qv(iy),Qv(iz), &
+!                   dreal(chi_bubble(j,ind)),dimag(chi_bubble(j,ind))
+!           enddo
+!        enddo
+!     enddo
+!  enddo
+!  call MPI_FINALIZE(ierror)
+!  stop
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
   IF(.NOT.sigma_only) THEN
