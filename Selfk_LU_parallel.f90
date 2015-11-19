@@ -36,11 +36,12 @@ PROGRAM self_k
   !-) sigma_only...only sigma_dga is calculated -> chi(q,omega), lambda_(ch,sp) have to be read from files
   !-) schi_so,xsp_so...lambda-corrections which should be used in the sigma_only-case
   !-) chi_only...only chi(q,omega) is calculated
+  !-) lambdaspin_only..lambda_correction is performed only in the magnetic channel
 
   !only rank 0 reads the parameters
   IF (myid.EQ.0) THEN
      CALL read_parameters('ladderDGA.in',uhub,mu,beta,nden, &
-          Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,xch_so,xsp_so)
+          Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
      !Check parameters
      WRITE(6,*) 'U= ', uhub
      WRITE(6,*) 'MU=',mu
@@ -52,9 +53,12 @@ PROGRAM self_k
      WRITE(6,*) "number of k'-intervals=",Nint
      WRITE(6,*) "number of external k-points=",k_number
      WRITE(6,*) 'sigma only=',sigma_only
-     WRITE(6,*)'lambda correcting for sigma-only, charge=',xch_so
-     WRITE(6,*)'lambda correcting for sigma-only, spin=',xsp_so
+     WRITE(6,*) 'lambda correcting for sigma-only, charge=',xch_so
+     WRITE(6,*) 'lambda correcting for sigma-only, spin=',xsp_so
      WRITE(6,*) 'chi only=',chi_only
+     WRITE(6,*) 'Lambda correction only for the magnetic channel (lambda_charge=0)?',lambdaspin_only
+     WRITE(6,*) 'Sum for lambda correction in the density channel over all bosonic frequencies?',sumallch
+     WRITE(6,*) 'Sum for lambda correction in the magnetic channel over all bosonic frequencies?',sumallsp
   ENDIF
   !Broadcast parameters to all ranks
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
@@ -71,6 +75,9 @@ PROGRAM self_k
   CALL MPI_BCAST(xsp_so,1,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(sigma_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(chi_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(lambdaspin_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(sumallch,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(sumallsp,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
 
   !determine bosonic frequency index i
@@ -159,6 +166,19 @@ PROGRAM self_k
   sum_ind_ch=INT(DABS(1.0d0/ind_ch))+(INT(DSIGN(1.0d0,ind_ch))-1)/2
   sum_ind_sp=INT(DABS(1.0d0/ind_sp))+(INT(DSIGN(1.0d0,ind_sp))-1)/2
 
+  !If lambda-correction should be calculated with all bosonic frequencies sumallch/sumallsp = .TRUE.
+  IF (sumallch) THEN
+     sum_ind_ch=Iwbox-1
+  ENDIF
+  IF (sumallsp) THEN
+     sum_ind_sp=Iwbox-1
+  ENDIF
+  
+  IF (myid.EQ.0) THEN
+     WRITE(6,*)'Maximal index for bosonic frequency summation in the charge-channel:',sum_ind_ch
+     WRITE(6,*)'Maximal index for bosonic frequency summation in the spin-channel:',sum_ind_sp
+  ENDIF
+
   IF (myid.EQ.0) THEN
      IF (sum_ind_ch.LT.0) THEN
         WRITE(6,*)'No bosonic frequencies for charge-sum'
@@ -177,7 +197,6 @@ PROGRAM self_k
   IF (ABS(i).GT.sum_ind_sp) THEN
      chisp_loc=dcmplx(0.0d0,0.0d0)
   ENDIF
-
   !perform sum of chich_loc and chisp_loc (via MPI_REDUCE)
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
   CALL MPI_ALLREDUCE(chich_loc,chich_loc_sum,1,MPI_REAL8, &
@@ -187,11 +206,6 @@ PROGRAM self_k
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
   chich_loc_sum=chich_loc_sum/beta
   chisp_loc_sum=chisp_loc_sum/beta
-
-  !write bosonic index, chi and chi_all to standard output
-  WRITE(6,*)sum_ind_ch,chich_loc,chich_loc_all
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  WRITE(6,*)sum_ind_sp,chisp_loc,chisp_loc_all
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
 
   !end of local part
@@ -262,26 +276,12 @@ PROGRAM self_k
   DEALLOCATE(chi_bubble_pos)
   DEALLOCATE(chi_bubble_neg)
 
-!  open(myid+100)
-!  do ix=0,LQ-1
-!     do iy=0,ix
-!        do iz=0,iy
-!           ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
-!           do j=-Iwbox,Iwbox-1
-!              write(myid+100,'(3f17.10,2f30.20)')Qv(ix),Qv(iy),Qv(iz), &
-!                   dreal(chi_bubble(j,ind)),dimag(chi_bubble(j,ind))
-!           enddo
-!        enddo
-!     enddo
-!  enddo
-!  call MPI_FINALIZE(ierror)
-!  stop
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
   IF(.NOT.sigma_only) THEN
      !calculation of the (not lambda-corrected) chi(x=0)
      !in spin and charge channel
+     chich_q_sum=dcmplx(0.0d0,0.0d0)
      DO ix=0,LQ-1
         !multiplicity (borders of BZ)
         a=1.d0
@@ -311,36 +311,52 @@ PROGRAM self_k
                 chi_bubble(:,ind))
            chisp_x0(ind)=calc_chi(Iwbox,beta,gammasp, &
                 chi_bubble(:,ind))
-           !determine starting value for lambda-correction
-           !in order to get positive chi(w=0,q)
-           IF (i.EQ.0) THEN
-              IF ((1.0d0/dreal(chich_x0(ind))).LT. &
-                   (1.0d0/dreal(chich_inv_min))) THEN
-                 chich_inv_min=chich_x0(ind)
+
+                !Calculate reference value for lambda_correction in the spin-channel only
+              IF ((i.GE.-sum_ind_ch).AND.(i.LE.sum_ind_ch)) THEN
+                 chich_q_sum=chich_q_sum+c*chich_x0(ind)
               ENDIF
-              IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
-                   (1.0d0/dreal(chisp_inv_min))) THEN
-                 chisp_inv_min=chisp_x0(ind)
+
+              !determine starting value for lambda-correction
+              !in order to get positive chi(w=0,q)
+              IF (i.EQ.0) THEN
+                 IF ((1.0d0/dreal(chich_x0(ind))).LT. &
+                      (1.0d0/dreal(chich_inv_min))) THEN
+                    chich_inv_min=chich_x0(ind)
+                 ENDIF
+                 IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
+                      (1.0d0/dreal(chisp_inv_min))) THEN
+                    chisp_inv_min=chisp_x0(ind)
+                 ENDIF
               ENDIF
            ENDIF
         ENDDO
      ENDDO
      
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+     CALL MPI_ALLREDUCE(chich_q_sum,chich_sum,1,MPI_COMPLEX16,MPI_SUM, &
+          MPI_COMM_WORLD,ierror)
      CALL MPI_BCAST(chich_inv_min,1,MPI_COMPLEX16,Iwbox-1-shift, &
           MPI_COMM_WORLD,ierror)
      CALL MPI_BCAST(chisp_inv_min,1,MPI_COMPLEX16,Iwbox-1-shift, &
           MPI_COMM_WORLD,ierror)
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-          
+     chich_sum=chich_sum/(beta*dfloat(LQ-1)**3)
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !calculate lambda corrections
-     
+
      CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
-     lambdach=lambda('lambda_correction_ch.dat',1,myid,i,sum_ind_ch,beta,LQ,chich_loc_sum, &
-          chich_inv_min,chich_x0)
-     lambdasp=lambda('lambda_correction_sp.dat',2,myid,i,sum_ind_sp,beta,LQ,chisp_loc_sum, &
-          chisp_inv_min,chisp_x0)
+     IF (.NOT.lambdaspin_only) THEN
+        lambdach=lambda('lambda_correction_ch.dat',1,myid,i,sum_ind_ch,beta,LQ,chich_loc_sum, &
+             chich_inv_min,chich_x0)
+        lambdasp=lambda('lambda_correction_sp.dat',2,myid,i,sum_ind_sp,beta,LQ,chisp_loc_sum, &
+             chisp_inv_min,chisp_x0)
+     ELSE
+        lambdach=0.0d0
+        lambdasp=lambda('lambda_correction_sp.dat',2,myid,i,sum_ind_sp,beta,LQ,chich_loc_sum+chisp_loc_sum-chich_sum, &
+             chisp_inv_min,chisp_x0)
+     ENDIF
      CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
      
      !end lambda correction

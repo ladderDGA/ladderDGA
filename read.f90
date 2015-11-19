@@ -5,14 +5,14 @@ MODULE read
 CONTAINS
   
   SUBROUTINE read_parameters(fname,uhub,xmu,beta,nden, &
-       Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,xch_so,xsp_so)
+       Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
     
     !input: filename of parameter file
     CHARACTER(LEN=*), INTENT(IN) :: fname
     !input: Parameters
     REAL(KIND=8), INTENT(OUT) :: uhub,xmu,beta,nden
     INTEGER, INTENT(OUT) :: Iwbox,shift,LQ,Nint,k_number
-    LOGICAL, INTENT(OUT) :: sigma_only,chi_only
+    LOGICAL, INTENT(OUT) :: sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp
     REAL(KIND=8), INTENT(OUT) :: xch_so,xsp_so
     
     !reading AIM/DMFT and lambda-correction parameters from file "fname"
@@ -27,6 +27,10 @@ CONTAINS
     READ(30,*) sigma_only, xch_so, xsp_so
     READ(30,*) 
     READ(30,*) chi_only
+    READ(30,*) 
+    READ(30,*) lambdaspin_only
+    READ(30,*)
+    READ(30,*) sumallch,sumallsp
     CLOSE(30)
     
   END SUBROUTINE read_parameters
@@ -179,8 +183,8 @@ CONTAINS
        DO k=-Iwbox,Iwbox-1
           READ(30,*)freq,freq,freq, &
                rech,imch,resp,imsp
-          gammach(j,k)=dcmplx(-rech,-imch)  !asymptotics of gammach -> -U here
-          gammasp(j,k)=dcmplx(-resp,-imsp)  !asymptotics of gammasp -> +U here
+          gammach(j,k)=dcmplx(rech,imch)  !asymptotics of gammach -> -U here
+          gammasp(j,k)=dcmplx(resp,imsp)  !asymptotics of gammasp -> +U here
        ENDDO
     ENDDO
     
