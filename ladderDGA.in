@@ -10,3 +10,5 @@ c Should only chis_omega and chich_omega be calculated?
 .FALSE.
 c Should a lambda-correction be performed only in the spin-channel?
 .FALSE.
+c Should the summation over the bosonic frequency in the charge-/spin-channel be done for all bosonic Matsubara frequencies?
+.FALSE.     .FALSE.
