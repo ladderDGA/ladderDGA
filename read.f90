@@ -183,8 +183,8 @@ CONTAINS
        DO k=-Iwbox,Iwbox-1
           READ(30,*)freq,freq,freq, &
                rech,imch,resp,imsp
-          gammach(j,k)=dcmplx(rech,imch)  !asymptotics of gammach -> -U here
-          gammasp(j,k)=dcmplx(resp,imsp)  !asymptotics of gammasp -> +U here
+          gammach(j,k)=dcmplx(-rech,-imch)  !asymptotics of gammach -> -U here
+          gammasp(j,k)=dcmplx(-resp,-imsp)  !asymptotics of gammasp -> +U here
        ENDDO
     ENDDO
     
