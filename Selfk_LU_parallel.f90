@@ -300,7 +300,7 @@ PROGRAM self_k
            b=b*dfloat(2/((1+iy)/(1+ix)+1))
            
            ind=ix*(ix+1)/2+iy+1
-
+           
            !write status to standard output
            IF (myid.EQ.0) THEN
               WRITE(6,*) 'i,j=',ix,iy,'Qx =',qx,'Qy =',qy,'b',b 
@@ -312,22 +312,21 @@ PROGRAM self_k
            chisp_x0(ind)=calc_chi(Iwbox,beta,gammasp, &
                 chi_bubble(:,ind))
 
-                !Calculate reference value for lambda_correction in the spin-channel only
-              IF ((i.GE.-sum_ind_ch).AND.(i.LE.sum_ind_ch)) THEN
-                 chich_q_sum=chich_q_sum+c*chich_x0(ind)
-              ENDIF
+           !Calculate reference value for lambda_correction in the spin-channel only
+           IF ((i.GE.-sum_ind_ch).AND.(i.LE.sum_ind_ch)) THEN
+              chich_q_sum=chich_q_sum+c*chich_x0(ind)
+           ENDIF
 
-              !determine starting value for lambda-correction
-              !in order to get positive chi(w=0,q)
-              IF (i.EQ.0) THEN
-                 IF ((1.0d0/dreal(chich_x0(ind))).LT. &
-                      (1.0d0/dreal(chich_inv_min))) THEN
-                    chich_inv_min=chich_x0(ind)
-                 ENDIF
-                 IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
-                      (1.0d0/dreal(chisp_inv_min))) THEN
-                    chisp_inv_min=chisp_x0(ind)
-                 ENDIF
+           !determine starting value for lambda-correction
+           !in order to get positive chi(w=0,q)
+           IF (i.EQ.0) THEN
+              IF ((1.0d0/dreal(chich_x0(ind))).LT. &
+                 (1.0d0/dreal(chich_inv_min))) THEN
+                 chich_inv_min=chich_x0(ind)
+              ENDIF
+              IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
+                 (1.0d0/dreal(chisp_inv_min))) THEN
+                 chisp_inv_min=chisp_x0(ind)
               ENDIF
            ENDIF
         ENDDO
