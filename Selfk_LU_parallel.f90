@@ -314,7 +314,7 @@ PROGRAM self_k
 
            !Calculate reference value for lambda_correction in the spin-channel only
            IF ((i.GE.-sum_ind_ch).AND.(i.LE.sum_ind_ch)) THEN
-              chich_q_sum=chich_q_sum+c*chich_x0(ind)
+              chich_q_sum=chich_q_sum+b*chich_x0(ind)
            ENDIF
 
            !determine starting value for lambda-correction
