@@ -340,7 +340,7 @@ PROGRAM self_k
      CALL MPI_BCAST(chisp_inv_min,1,MPI_COMPLEX16,Iwbox-1-shift, &
           MPI_COMM_WORLD,ierror)
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-     chich_sum=chich_sum/(beta*dfloat(LQ-1)**3)
+     chich_sum=chich_sum/(beta*dfloat(LQ-1)**2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !calculate lambda corrections
