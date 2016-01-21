@@ -5,6 +5,6 @@ c Iwbox
 c linear size of k_grid for self-energy, number of energies for occupation density
 0     0
 c range of energy for occupation number: lower bound, upper bound; energy-cutoff around the fermi-energy
--1.0d0     1.0d0     1000.0d0
+-1.224744871391589049090d0     1.224744871391589049090d0     1000.0d0
 c Perform calculations for: U=0?, DMFT?, DGA?,
 .TRUE.     .TRUE.     .TRUE.
