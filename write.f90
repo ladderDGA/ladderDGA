@@ -29,6 +29,27 @@ CONTAINS
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+  SUBROUTINE write_chi_bubble(fname,Iwbox,chi_bubble)
+    !writes the bubble term for a given q
+
+    !input:
+    CHARACTER(LEN=*), INTENT(IN) :: fname
+    INTEGER, INTENT(IN) :: Iwbox
+    COMPLEX(KIND=8), DIMENSION(-Iwbox:), INTENT(IN) :: chi_bubble
+    !subroutine internal variables
+    INTEGER j
+
+    OPEN(30,file=fname,form='formatted',status='replace')
+
+    DO j=-Iwbox,Iwbox-1
+       WRITE (30,'(3f17.10)')real(j),dreal(chi_bubble(j)),dimag(chi_bubble(j))
+    ENDDO
+    CLOSE(30)
+
+  END SUBROUTINE write_chi_bubble
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   SUBROUTINE write_chi(fname,LQ,Qv,lambda,chi)
     !writes the physical susceptibilities
 

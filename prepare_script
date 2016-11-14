@@ -1,0 +1,36 @@
+#!/bin/bash
+
+echo "Type value of U: "
+read U
+echo "Type value of chemical potential mu: "
+read mu
+echo "Type value of density n: "
+read n
+echo "Type value of beta: "
+read beta
+echo "Type number of fermionic frequencies: "
+read Iwbox
+echo "Type number of q-points: "
+read LQ
+echo "Type number of k'-points: "
+read Nint
+echo "Type value of qx for which chi_bubble should be printed (0<= qx <=LQ-1): "
+read qx
+echo "Type value of qy for which chi_bubble should be printed (0<= qy <=LQ-1): "
+read qy
+
+sed 's/uhub/'$U'/; s/muhub/'$mu$'/; s/betahub/'$beta'/; s/nhub/'$n'/; s/numfrequ/'$Iwbox'/; s/numq/'$LQ'/; s/numkprime/'$Nint'/; s/printqx/'$qx'/; s/printqy/'$qy'/' ladderDGA.in > ladderDGA1.in
+mv ladderDGA1.in  ladderDGA.in
+
+Iwbox1=$(echo "4*($Iwbox^2)" | bc)
+
+sed 's/Iwbox/'$Iwbox1'/' splitscriptin_chi > int1
+mv int1 splitscriptin_chi
+
+sed 's/Iwbox/'$Iwbox1'/' splitscriptin_gamma > int1
+mv int1 splitscriptin_gamma
+
+./split_script < splitscriptin_chi
+./split_script < splitscriptin_gamma
+
+make

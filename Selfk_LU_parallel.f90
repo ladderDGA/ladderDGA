@@ -276,6 +276,19 @@ PROGRAM self_k
   DEALLOCATE(chi_bubble_pos)
   DEALLOCATE(chi_bubble_neg)
 
+  !write bubble as a function of nu' for a given value of q
+  ALLOCATE(CHARACTER(LEN=24)::fname)
+  ind=ixbubble*(ixbubble+1)/2+iybubble+1
+  IF ((myid+shift).LT.10) THEN
+     WRITE(fname,'(A11,12Hchi_bubble00,I1)')'chi_bubble/',myid+shift
+  ELSEIF ((myid+shift).LT.100) THEN
+     WRITE(fname,'(A11,11Hchi_bubble0,I2)')'chi_bubble/',myid+shift
+  ELSE
+     WRITE(fname,'(A11,10Hchi_bubble,I3)')'chi_bubble/',myid+shift
+  ENDIF
+  CALL write_chi_bubble(fname,Iwbox,chi_bubble(:,ind))
+  DEALLOCATE(fname)
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
   IF(.NOT.sigma_only) THEN

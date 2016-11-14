@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo "Input-file: "
+read inputfile
+
+echo "Output-file (prefix): "
+read prefix
+
+echo "Number of lines/outputfile: "
+read linenumber
+
+mkdir $prefix\_dir
+cd $prefix\_dir
+
+split --suffix-length=3 -d --lines=$linenumber ../$inputfile $prefix &
+
+cd ..

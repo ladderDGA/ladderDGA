@@ -24,7 +24,7 @@ RUNFLAGS := -O4 # Compiler flags for quick compile and run
 DBFLAGS := -C -traceback -g -fpe0 # Compiler flags for debugging
 PROFFLAGS := -O2 -g # Compiler flags for profiling
 OPTIMIZEFLAGS := -O4 # Compiler flags for optimal speed
-LIB := -llapack # Specify Libraries
+LIB := -mkl # Specify Libraries
 INC := # Additional include paths
 
 

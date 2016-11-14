@@ -1,0 +1,6 @@
+beta=10
+U=1
+n=1
+Iwbox_fermi=20
+Iwbox_fermi=19
+Nk=0...40 (-pi+1/40 ... pi)

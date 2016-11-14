@@ -1,14 +1,16 @@
 c AIM parameters: U, mu, beta, nden
-0.0d0      0.0d0       0.0d0       0.0d0
+uhub      muhub    betahub          nhub
 c Iwbox    shift
-0       0
+numfrequ       0
 c LQ    Nint     k_number
-0     0     0
+numq     numkprime     3
 c Should only sigma be calculated?, lmabdach, lambdasp (chich_omega(x=0) and chisp_omega(x=0) have to be provided) 
 .FALSE.     0.0d0     0.0d0
 c Should only chis_omega and chich_omega be calculated?
-.FALSE.
+.TRUE.
 c Should a lambda-correction be performed only in the spin-channel?
-.FALSE.
+.TRUE.
 c Should the summation over the bosonic frequency in the charge-/spin-channel be done for all bosonic Matsubara frequencies?
 .FALSE.     .FALSE.
+c For which 0<= ix <=LQ-1 and 0<= iy <=ix should the bubble term be printed
+printqx     printqy     
