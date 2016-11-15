@@ -41,7 +41,8 @@ PROGRAM self_k
   !only rank 0 reads the parameters
   IF (myid.EQ.0) THEN
      CALL read_parameters('ladderDGA.in',uhub,mu,beta,nden, &
-          Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
+          Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only, &
+               sumallch,sumallsp,xch_so,xsp_so,ixbubble,iybubble)
      !Check parameters
      WRITE(6,*) 'U= ', uhub
      WRITE(6,*) 'MU=',mu
@@ -78,6 +79,8 @@ PROGRAM self_k
   CALL MPI_BCAST(lambdaspin_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(sumallch,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(sumallsp,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(ixbubble,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(iybubble,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
 
   !determine bosonic frequency index i
@@ -279,6 +282,9 @@ PROGRAM self_k
   !write bubble as a function of nu' for a given value of q
   ALLOCATE(CHARACTER(LEN=24)::fname)
   ind=ixbubble*(ixbubble+1)/2+iybubble+1
+  if (myid.eq.0) then 
+     write(*,*)ixbubble,iybubble,ind
+  endif
   IF ((myid+shift).LT.10) THEN
      WRITE(fname,'(A11,12Hchi_bubble00,I1)')'chi_bubble/',myid+shift
   ELSEIF ((myid+shift).LT.100) THEN
