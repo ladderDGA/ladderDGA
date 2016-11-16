@@ -60,6 +60,8 @@ PROGRAM self_k
      WRITE(6,*) 'Lambda correction only for the magnetic channel (lambda_charge=0)?',lambdaspin_only
      WRITE(6,*) 'Sum for lambda correction in the density channel over all bosonic frequencies?',sumallch
      WRITE(6,*) 'Sum for lambda correction in the magnetic channel over all bosonic frequencies?',sumallsp
+     write(6,*) 'Chi_0(nu,omega)_q is printed in directory /chi_bubble for q=(',pi*dfloat(ixbubble)/dfloat(LQ-1) &
+          ','pi*dlfoat(iybubble)/dfloat(LQ-1)')'
   ENDIF
   !Broadcast parameters to all ranks
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
