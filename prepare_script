@@ -19,6 +19,9 @@ read qx
 echo "Type value of qy for which chi_bubble should be printed (0<= qy <=LQ-1): "
 read qy
 
+ifort dispersion.f90 make_klist.f90 -o make_klist.x
+./make_klist.x
+
 sed 's/uhub/'$U'/; s/muhub/'$mu$'/; s/betahub/'$beta'/; s/nhub/'$n'/; s/numfrequ/'$Iwbox'/; s/numq/'$LQ'/; s/numkprime/'$Nint'/; s/printqx/'$qx'/; s/printqy/'$qy'/' ladderDGA.in > ladderDGA1.in
 mv ladderDGA1.in  ladderDGA.in
 
