@@ -33,4 +33,21 @@ mv int1 splitscriptin_gamma
 ./split_script < splitscriptin_chi
 ./split_script < splitscriptin_gamma
 
+if [ ! -d chich_omega ]
+    then
+    mkdir chich_omega
+fi
+if [ ! -d chisp_omega ]
+    then
+    mkdir chisp_omega
+fi
+if [ ! -d chi_bubble ]
+    then
+    mkdir chi_bubble
+fi
+if [ ! -d klist ]
+    then
+    mkdir klist
+fi
+
 make
