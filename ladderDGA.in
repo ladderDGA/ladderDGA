@@ -1,7 +1,7 @@
 c AIM parameters: U, mu, beta, nden
 0.0d0      0.0d0       0.0d0       0.0d0
-c Iwbox    shift
-0       0
+c Iwbox    Iwbox_bose    shift
+0       0       0
 c LQ    Nint     k_number
 0     0     0
 c Should only sigma be calculated?, lmabdach, lambdasp (chich_omega(x=0) and chisp_omega(x=0) have to be provided) 

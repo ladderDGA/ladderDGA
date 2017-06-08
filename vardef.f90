@@ -13,7 +13,7 @@ MODULE vardef
 
   !parameters read in from ladderDGA.into 
   REAL(KIND=8) :: uhub,mu,beta,nden,xch_so,xsp_so
-  INTEGER :: Iwbox,shift,LQ,Nint,k_number
+  INTEGER :: Iwbox,Iwbox_bose,shift,LQ,Nint,k_number
   LOGICAL :: sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp
 
   !index of bosonic matsubara frequency (1 rank = 1 frequency, might be changed)

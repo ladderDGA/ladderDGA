@@ -29,6 +29,7 @@ PROGRAM self_k
   !-) beta...inverse temperature
   !-) nden...average density per lattice site
   !-) Iwbox...number of fermionic Matsubara frequencies
+  !-) Iwbox_bose...number of bosonic Matsubara frequencies
   !-) shift...offset for bosonic frequencies
   !-) LQ...interval (0,pi) for internal q-summation is diveded into (LQ-1) parts (LQ=0 -> 0, LQ->pi)
   !-) Nint...interval (-pi,pi) for internal k' summation is split into Nint subintervals
@@ -41,13 +42,14 @@ PROGRAM self_k
   !only rank 0 reads the parameters
   IF (myid.EQ.0) THEN
      CALL read_parameters('ladderDGA.in',uhub,mu,beta,nden, &
-          Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
+          Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
      !Check parameters
      WRITE(6,*) 'U= ', uhub
      WRITE(6,*) 'MU=',mu
      WRITE(6,*) 'BETA=',beta
      WRITE(6,*) '< n >=', nden 
      WRITE(6,*) 'fermionic frequency box=',Iwbox
+     WRITE(6,*) 'bosonic frequency box=',Iwbox_bose
      WRITE(6,*) 'shift of bosonic frequency box=',shift
      WRITE(6,*) "number of q-points=",LQ
      WRITE(6,*) "number of k'-intervals=",Nint
@@ -60,6 +62,7 @@ PROGRAM self_k
      WRITE(6,*) 'Sum for lambda correction in the density channel over all bosonic frequencies?',sumallch
      WRITE(6,*) 'Sum for lambda correction in the magnetic channel over all bosonic frequencies?',sumallsp
   ENDIF
+
   !Broadcast parameters to all ranks
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
   CALL MPI_BCAST(uhub,1,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
@@ -67,6 +70,7 @@ PROGRAM self_k
   CALL MPI_BCAST(beta,1,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(nden,1,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(Iwbox,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(Iwbox_bose,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(shift,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(LQ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(Nint,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
@@ -82,8 +86,7 @@ PROGRAM self_k
 
   !determine bosonic frequency index i
   !-> should be generalized to an array of bosonic frequenies if #ranks<#bosonic frequencies!!!!!
-  i=myid-Iwbox+1+shift
-
+  i=myid-Iwbox_bose+shift
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !Local part of the program. Calculates: selfloc, chich_loc, chisp_loc,
   !                                                            chich_loc_sum, chisp_loc_sum,
@@ -138,12 +141,16 @@ PROGRAM self_k
   !sum self(nu,i) over bosonic index i
   ALLOCATE(selfloc_res(0:Iwbox-1))
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  CALL MPI_REDUCE(selfloc,selfloc_res,Iwbox, MPI_COMPLEX16, &
+  CALL MPI_REDUCE(selfloc,selfloc_res,Iwbox,MPI_COMPLEX16, &
        MPI_SUM,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  DO j=0,Iwbox-1
-     selfloc_res(j)=selfloc_res(j)*uhub/beta+uhub/2.d0*nden
-  ENDDO
+
+  IF (myid.EQ.0) THEN
+     DO j=0,Iwbox-1
+        selfloc_res(j)=selfloc_res(j)*uhub/beta+uhub/2.d0*nden
+     ENDDO
+  ENDIF
+
   ! output of local self-energy
   IF (myid.EQ.0) THEN
      CALL write_self_loc('klist/SELF_LOC_parallel',Iwbox,beta,self(0:Iwbox-1),selfloc_res)
@@ -168,10 +175,10 @@ PROGRAM self_k
 
   !If lambda-correction should be calculated with all bosonic frequencies sumallch/sumallsp = .TRUE.
   IF (sumallch) THEN
-     sum_ind_ch=Iwbox-1
+     sum_ind_ch=Iwbox_bose
   ENDIF
   IF (sumallsp) THEN
-     sum_ind_sp=Iwbox-1
+     sum_ind_sp=Iwbox_bose
   ENDIF
   
   IF (myid.EQ.0) THEN
@@ -248,10 +255,9 @@ PROGRAM self_k
      qmax=find_qmax(mu,beta,Iwbox,self,LQ,Nint,gammasp)
      WRITE(6,*)'qmax= ',qmax
   ENDIF
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  CALL MPI_BCAST(qmax,1,MPI_REAL8,Iwbox-1-shift, &
-       MPI_COMM_WORLD,ierror)
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
+  CALL MPI_BCAST(qmax,1,MPI_REAL8,Iwbox_bose-shift,MPI_COMM_WORLD,ierror)
+  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
 
   !initialize the cos()- and sin()-arrays for the three momenta
   CALL init_arrays(Nint,LQ,k_number,klist,0d0,pi,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
@@ -261,8 +267,8 @@ PROGRAM self_k
   !copy chi_bubble for nu>0 to nu<0 by using the symmetry chi_bubble(-nu,omega,q)=dcmplx(chi_bubble(nu,-omega,q))
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
   request=MPI_REQUEST_NULL
-  CALL MPI_ISSEND(chi_bubble_pos,Iwbox*LQ*(LQ+1)/2,MPI_COMPLEX16,-myid+2*Iwbox-2,98,MPI_COMM_WORLD,request,ierror)
-  CALL MPI_RECV(chi_bubble_neg,Iwbox*LQ*(LQ+1)/2,MPI_COMPLEX16,-myid+2*Iwbox-2,98,MPI_COMM_WORLD,recvstatus,ierror)
+  CALL MPI_ISSEND(chi_bubble_pos,Iwbox*LQ*(LQ+1)/2,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,request,ierror)
+  CALL MPI_RECV(chi_bubble_neg,Iwbox*LQ*(LQ+1)/2,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,recvstatus,ierror)
   CALL MPI_WAIT(request,sendstatus,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
   DO ind=1,LQ*(LQ+1)/2
@@ -335,9 +341,9 @@ PROGRAM self_k
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
      CALL MPI_ALLREDUCE(chich_q_sum,chich_sum,1,MPI_COMPLEX16,MPI_SUM, &
           MPI_COMM_WORLD,ierror)
-     CALL MPI_BCAST(chich_inv_min,1,MPI_COMPLEX16,Iwbox-1-shift, &
+     CALL MPI_BCAST(chich_inv_min,1,MPI_COMPLEX16,Iwbox_bose-shift, &
           MPI_COMM_WORLD,ierror)
-     CALL MPI_BCAST(chisp_inv_min,1,MPI_COMPLEX16,Iwbox-1-shift, &
+     CALL MPI_BCAST(chisp_inv_min,1,MPI_COMPLEX16,Iwbox_bose-shift, &
           MPI_COMM_WORLD,ierror)
      CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
      chich_sum=chich_sum/(beta*dfloat(LQ-1)**2)

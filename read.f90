@@ -5,13 +5,13 @@ MODULE read
 CONTAINS
   
   SUBROUTINE read_parameters(fname,uhub,xmu,beta,nden, &
-       Iwbox,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
+       Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
     
     !input: filename of parameter file
     CHARACTER(LEN=*), INTENT(IN) :: fname
     !input: Parameters
     REAL(KIND=8), INTENT(OUT) :: uhub,xmu,beta,nden
-    INTEGER, INTENT(OUT) :: Iwbox,shift,LQ,Nint,k_number
+    INTEGER, INTENT(OUT) :: Iwbox,Iwbox_bose,shift,LQ,Nint,k_number
     LOGICAL, INTENT(OUT) :: sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp
     REAL(KIND=8), INTENT(OUT) :: xch_so,xsp_so
     
@@ -20,7 +20,7 @@ CONTAINS
     READ(30,*) 
     READ(30,*) uhub, xmu, beta, nden
     READ(30,*) 
-    READ(30,*) Iwbox,shift
+    READ(30,*) Iwbox,Iwbox_bose,shift
     READ(30,*) 
     READ(30,*) LQ,Nint,k_number
     READ(30,*) 
