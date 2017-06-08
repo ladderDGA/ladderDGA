@@ -1,7 +1,7 @@
 PROGRAM make_klist
   USE dispersion
   IMPLICIT NONE
-  INTEGER, PARAMETER :: k_range=50
+  INTEGER, PARAMETER :: k_range=32
   INTEGER :: ix,iy,iz
   REAL(KIND=8) :: pi,kx,ky,kz,energy
 
