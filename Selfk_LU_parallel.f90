@@ -34,15 +34,13 @@ PROGRAM self_k
   !-) LQ...interval (0,pi) for internal q-summation is diveded into (LQ-1) parts (LQ=0 -> 0, LQ->pi)
   !-) Nint...interval (-pi,pi) for internal k' summation is split into Nint subintervals
   !-) k_number...number of external k-points for which sigma_dga is calculated
-  !-) sigma_only...only sigma_dga is calculated -> chi(q,omega), lambda_(ch,sp) have to be read from files
-  !-) schi_so,xsp_so...lambda-corrections which should be used in the sigma_only-case
   !-) chi_only...only chi(q,omega) is calculated
   !-) lambdaspin_only..lambda_correction is performed only in the magnetic channel
 
   !only rank 0 reads the parameters
   IF (myid.EQ.0) THEN
      CALL read_parameters('ladderDGA.in',uhub,mu,beta,nden, &
-          Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
+          Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,chi_only,lambdaspin_only,sumallch,sumallsp)
      !Check parameters
      WRITE(6,*) 'U= ', uhub
      WRITE(6,*) 'MU=',mu
@@ -54,9 +52,6 @@ PROGRAM self_k
      WRITE(6,*) "number of q-points=",LQ
      WRITE(6,*) "number of k'-intervals=",Nint
      WRITE(6,*) "number of external k-points=",k_number
-     WRITE(6,*) 'sigma only=',sigma_only
-     WRITE(6,*) 'lambda correcting for sigma-only, charge=',xch_so
-     WRITE(6,*) 'lambda correcting for sigma-only, spin=',xsp_so
      WRITE(6,*) 'chi only=',chi_only
      WRITE(6,*) 'Lambda correction only for the magnetic channel (lambda_charge=0)?',lambdaspin_only
      WRITE(6,*) 'Sum for lambda correction in the density channel over all bosonic frequencies?',sumallch
@@ -75,9 +70,6 @@ PROGRAM self_k
   CALL MPI_BCAST(LQ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(Nint,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(k_number,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierror)
-  CALL MPI_BCAST(xch_so,1,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
-  CALL MPI_BCAST(xsp_so,1,MPI_REAL8,0,MPI_COMM_WORLD,ierror)
-  CALL MPI_BCAST(sigma_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(chi_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(lambdaspin_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(sumallch,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
@@ -227,7 +219,13 @@ PROGRAM self_k
   ALLOCATE(chi_bubble_neg(0:Iwbox-1,1:(LQ+1)*LQ/2))
   ALLOCATE(chich_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
   ALLOCATE(chisp_x0(1:(LQ+1)*LQ/2))   !only qx >= qy
-  
+
+  !if the self-energy should be also calculated, allocate trilex vertices
+  IF (.NOT.chi_only) THEN
+     ALLOCATE(trilexch(-Iwbox:Iwbox-1,1:(LQ+1)*LQ/2))
+     ALLOCATE(trilexsp(-Iwbox:Iwbox-1,1:(LQ+1)*LQ/2))
+  ENDIF
+
   !allocate klist (contains list of external k-points)
   ALLOCATE(klist(k_number,2))
   !read external k-points (only rank 0)
@@ -284,148 +282,121 @@ PROGRAM self_k
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   
-  IF(.NOT.sigma_only) THEN
-     !calculation of the (not lambda-corrected) chi(x=0)
-     !in spin and charge channel
-     chich_q_sum=dcmplx(0.0d0,0.0d0)
-     DO ix=0,LQ-1
-        !multiplicity (borders of BZ)
-        a=1.d0
-        IF (ix.EQ.0.OR.ix.EQ.LQ-1) THEN
-           a=a*0.5d0
+  !calculation of the (not lambda-corrected) chi(x=0)
+  !in spin and charge channel
+  chich_q_sum=dcmplx(0.0d0,0.0d0)
+  DO ix=0,LQ-1
+     !multiplicity (borders of BZ)
+     a=1.d0
+     IF (ix.EQ.0.OR.ix.EQ.LQ-1) THEN
+        a=a*0.5d0
+     ENDIF
+     qx = Qv(ix)
+     DO iy=0,ix
+        b=a
+        IF (iy.eq.0.or.iy.eq.LQ-1) then
+           b=b*0.5d0
         ENDIF
-        qx = Qv(ix)
-        DO iy=0,ix
-           b=a
-           IF (iy.eq.0.or.iy.eq.LQ-1) then
-              b=b*0.5d0
-           ENDIF
-           qy = Qv(iy)
-           
-           !multiplicity (fully irreducible BZ)
-           b=b*dfloat(2/((1+iy)/(1+ix)+1))
-           
-           ind=ix*(ix+1)/2+iy+1
-           
-           !write status to standard output
-           IF (myid.EQ.0) THEN
-              WRITE(6,*) 'i,j=',ix,iy,'Qx =',qx,'Qy =',qy,'b',b 
-           ENDIF
-           
-           !calculate chi (without lambda correction)
+        qy = Qv(iy)
+        
+        !multiplicity (fully irreducible BZ)
+        b=b*dfloat(2/((1+iy)/(1+ix)+1))
+        
+        ind=ix*(ix+1)/2+iy+1
+        
+        !write status to standard output
+        IF (myid.EQ.0) THEN
+           WRITE(6,*) 'i,j=',ix,iy,'Qx =',qx,'Qy =',qy,'b',b 
+        ENDIF
+        
+        !if chi_only=.true., calculate only chi (without lambda correction)
+        IF (chi_only) THEN
            chich_x0(ind)=calc_chi(Iwbox,beta,gammach, &
                 chi_bubble(:,ind))
            chisp_x0(ind)=calc_chi(Iwbox,beta,gammasp, &
                 chi_bubble(:,ind))
-
-           !Calculate reference value for lambda_correction in the spin-channel only
-           IF ((i.GE.-sum_ind_ch).AND.(i.LE.sum_ind_ch)) THEN
-              chich_q_sum=chich_q_sum+b*chich_x0(ind)
+        !else calculate chi (without lambda correction) and trilex
+        ELSE
+           CALL calc_chi_trilex(Iwbox,uhub,beta,gammach,chi_bubble(:,ind), &
+                chich_x0(ind),trilexch(:,ind))
+           CALL calc_chi_trilex(Iwbox,-uhub,beta,gammasp,chi_bubble(:,ind), &
+                chisp_x0(ind),trilexsp(:,ind))
+        ENDIF
+        
+        !Calculate reference value for lambda_correction in the spin-channel only
+        IF ((i.GE.-sum_ind_ch).AND.(i.LE.sum_ind_ch)) THEN
+           chich_q_sum=chich_q_sum+b*chich_x0(ind)
+        ENDIF
+        
+        !determine starting value for lambda-correction
+        !in order to get positive chi(w=0,q)
+        IF (i.EQ.0) THEN
+           IF ((1.0d0/dreal(chich_x0(ind))).LT. &
+                (1.0d0/dreal(chich_inv_min))) THEN
+              chich_inv_min=chich_x0(ind)
            ENDIF
-
-           !determine starting value for lambda-correction
-           !in order to get positive chi(w=0,q)
-           IF (i.EQ.0) THEN
-              IF ((1.0d0/dreal(chich_x0(ind))).LT. &
-                 (1.0d0/dreal(chich_inv_min))) THEN
-                 chich_inv_min=chich_x0(ind)
-              ENDIF
-              IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
-                 (1.0d0/dreal(chisp_inv_min))) THEN
-                 chisp_inv_min=chisp_x0(ind)
-              ENDIF
+           IF ((1.0d0/dreal(chisp_x0(ind))).LT. &
+                (1.0d0/dreal(chisp_inv_min))) THEN
+              chisp_inv_min=chisp_x0(ind)
            ENDIF
-        ENDDO
+        ENDIF
      ENDDO
-     
-     CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-     CALL MPI_ALLREDUCE(chich_q_sum,chich_sum,1,MPI_COMPLEX16,MPI_SUM, &
-          MPI_COMM_WORLD,ierror)
-     CALL MPI_BCAST(chich_inv_min,1,MPI_COMPLEX16,Iwbox_bose-shift, &
-          MPI_COMM_WORLD,ierror)
-     CALL MPI_BCAST(chisp_inv_min,1,MPI_COMPLEX16,Iwbox_bose-shift, &
-          MPI_COMM_WORLD,ierror)
-     CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-     chich_sum=chich_sum/(beta*dfloat(LQ-1)**2)
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     !calculate lambda corrections
-
-     CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
-     IF (.NOT.lambdaspin_only) THEN
-        lambdach=lambda('lambda_correction_ch.dat',1,myid,i,sum_ind_ch,beta,LQ,chich_loc_sum, &
-             chich_inv_min,chich_x0)
-        lambdasp=lambda('lambda_correction_sp.dat',2,myid,i,sum_ind_sp,beta,LQ,chisp_loc_sum, &
-             chisp_inv_min,chisp_x0)
-     ELSE
-        lambdach=0.0d0
-        lambdasp=lambda('lambda_correction_sp.dat',2,myid,i,sum_ind_sp,beta,LQ,chich_loc_sum+chisp_loc_sum-chich_sum, &
-             chisp_inv_min,chisp_x0)
-     ENDIF
-     CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
-     
-     !end lambda correction
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     
-     !create filename for charge susceptibility
-     ALLOCATE(CHARACTER(LEN=18)::fname)
-     IF ((myid+shift).LT.10) THEN
-        WRITE(fname,'(A12,5Hchi00,I1)')'chich_omega/',myid+shift
-     ELSEIF ((myid+shift).LT.100) THEN
-        WRITE(fname,'(A12,4Hchi0,I2)')'chich_omega/',myid+shift
-     ELSE
-        WRITE(fname,'(A12,3Hchi,I3)')'chich_omega/',myid+shift
-     ENDIF
-     !write chich(q,omega) for calculated lambdach and for lambdach
-     CALL write_chi(fname,LQ,Qv,lambdach,chich_x0)
-     DEALLOCATE(fname)
-     !create filename for spin susceptibility
-     ALLOCATE(CHARACTER(LEN=18)::fname)
-     IF ((myid+shift).LT.10) THEN
-        WRITE(fname,'(A12,5Hchi00,I1)')'chisp_omega/',myid+shift
-     ELSEIF ((myid+shift).LT.100) THEN
-        WRITE(fname,'(A12,4Hchi0,I2)')'chisp_omega/',myid+shift
-     ELSE
-        WRITE(fname,'(A12,3Hchi,I3)')'chisp_omega/',myid+shift
-     ENDIF
-     !write chich(q,omega) for calculated lambdach and for lambdach
-     CALL write_chi(fname,LQ,Qv,lambdasp,chisp_x0)
-     DEALLOCATE(fname)
-
-  ELSE !else from "if (.not.sigma_only)"
+  ENDDO
   
-     !create filename for charge susceptibility
-     ALLOCATE(CHARACTER(LEN=18)::fname)
-     IF ((myid+shift).LT.10) THEN
-        WRITE(fname,'(A12,5Hchi00,I1)')'chich_omega/',myid+shift
-     ELSEIF ((myid+shift).LT.100) THEN
-        WRITE(fname,'(A12,4Hchi0,I2)')'chich_omega/',myid+shift
-     ELSE
-        WRITE(fname,'(A12,3Hchi,I3)')'chich_omega/',myid+shift
-     ENDIF
-     !read chich(q,omega) for lambdach=0
-     CALL read_chix0(fname,LQ,chich_x0)
-     DEALLOCATE(fname)
-     
-     !create filename for spin susceptibility
-     ALLOCATE(CHARACTER(LEN=18)::fname)
-     IF ((myid+shift).LT.10) THEN
-        WRITE(fname,'(A12,5Hchi00,I1)')'chisp_omega/',myid+shift
-     ELSEIF ((myid+shift).LT.100) THEN
-        WRITE(fname,'(A12,4Hchi0,I2)')'chisp_omega/',myid+shift
-     ELSE
-        WRITE(fname,'(A12,3Hchi,I3)')'chisp_omega/',myid+shift
-     ENDIF
-     !read chich(q,omega) for lambdach=0
-     CALL read_chix0(fname,LQ,chisp_x0)
-     DEALLOCATE(fname)
-
-     !set lambda values to the ones read from input file
-     lambdach=xch_so
-     lambdasp=xsp_so
-
-  ENDIF   !endif from "if (.not.sigma_only)"
+  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+  CALL MPI_ALLREDUCE(chich_q_sum,chich_sum,1,MPI_COMPLEX16,MPI_SUM, &
+       MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(chich_inv_min,1,MPI_COMPLEX16,Iwbox_bose-shift, &
+       MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(chisp_inv_min,1,MPI_COMPLEX16,Iwbox_bose-shift, &
+       MPI_COMM_WORLD,ierror)
+  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+  chich_sum=chich_sum/(beta*dfloat(LQ-1)**2)
   
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !calculate lambda corrections
+
+  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
+  IF (.NOT.lambdaspin_only) THEN
+     lambdach=lambda('lambda_correction_ch.dat',1,myid,i,sum_ind_ch,beta,LQ,chich_loc_sum, &
+          chich_inv_min,chich_x0)
+     lambdasp=lambda('lambda_correction_sp.dat',2,myid,i,sum_ind_sp,beta,LQ,chisp_loc_sum, &
+          chisp_inv_min,chisp_x0)
+  ELSE
+     lambdach=0.0d0
+     lambdasp=lambda('lambda_correction_sp.dat',2,myid,i,sum_ind_sp,beta,LQ,chich_loc_sum+chisp_loc_sum-chich_sum, &
+          chisp_inv_min,chisp_x0)
+  ENDIF
+  CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
+  
+  !end lambda correction
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     
+  !create filename for charge susceptibility
+  ALLOCATE(CHARACTER(LEN=18)::fname)
+  IF ((myid+shift).LT.10) THEN
+     WRITE(fname,'(A12,5Hchi00,I1)')'chich_omega/',myid+shift
+  ELSEIF ((myid+shift).LT.100) THEN
+     WRITE(fname,'(A12,4Hchi0,I2)')'chich_omega/',myid+shift
+  ELSE
+     WRITE(fname,'(A12,3Hchi,I3)')'chich_omega/',myid+shift
+  ENDIF
+  !write chich(q,omega) for calculated lambdach and for lambdach
+  CALL write_chi(fname,LQ,Qv,lambdach,chich_x0)
+  DEALLOCATE(fname)
+  !create filename for spin susceptibility
+  ALLOCATE(CHARACTER(LEN=18)::fname)
+  IF ((myid+shift).LT.10) THEN
+     WRITE(fname,'(A12,5Hchi00,I1)')'chisp_omega/',myid+shift
+  ELSEIF ((myid+shift).LT.100) THEN
+     WRITE(fname,'(A12,4Hchi0,I2)')'chisp_omega/',myid+shift
+  ELSE
+     WRITE(fname,'(A12,3Hchi,I3)')'chisp_omega/',myid+shift
+  ENDIF
+  !write chisp(q,omega) for calculated lambdasp and for lambdasp
+  CALL write_chi(fname,LQ,Qv,lambdasp,chisp_x0)
+  DEALLOCATE(fname)
+    
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !  Calculation of the lambda-corrected Self-energy with the lambda-value read or obtained above
 
@@ -441,7 +412,7 @@ PROGRAM self_k
      ALLOCATE(selflistrest_res(k_number,0:Iwbox-1))
 
      CALL calc_self(Iwbox,myid,i,LQ,k_number,uhub,mu,beta,lambdach,lambdasp, &
-       self,fupdown,gammach,gammasp, chi_bubble,chich_x0,chisp_x0, &
+       self,fupdown,gammach,gammasp, chi_bubble,chich_x0,chisp_x0,trilexch,trilexsp, &
        dcoq,dsiq,dcol,dsil, &
        selflist,selflistch,selflistsp,selflistrest)
 

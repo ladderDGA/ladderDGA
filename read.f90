@@ -5,15 +5,14 @@ MODULE read
 CONTAINS
   
   SUBROUTINE read_parameters(fname,uhub,xmu,beta,nden, &
-       Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp,xch_so,xsp_so)
+       Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,chi_only,lambdaspin_only,sumallch,sumallsp)
     
     !input: filename of parameter file
     CHARACTER(LEN=*), INTENT(IN) :: fname
     !input: Parameters
     REAL(KIND=8), INTENT(OUT) :: uhub,xmu,beta,nden
     INTEGER, INTENT(OUT) :: Iwbox,Iwbox_bose,shift,LQ,Nint,k_number
-    LOGICAL, INTENT(OUT) :: sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp
-    REAL(KIND=8), INTENT(OUT) :: xch_so,xsp_so
+    LOGICAL, INTENT(OUT) :: chi_only,lambdaspin_only,sumallch,sumallsp
     
     !reading AIM/DMFT and lambda-correction parameters from file "fname"
     OPEN(30,file=fname,form='formatted',status='old')
@@ -23,8 +22,6 @@ CONTAINS
     READ(30,*) Iwbox,Iwbox_bose,shift
     READ(30,*) 
     READ(30,*) LQ,Nint,k_number
-    READ(30,*) 
-    READ(30,*) sigma_only, xch_so, xsp_so
     READ(30,*) 
     READ(30,*) chi_only
     READ(30,*) 

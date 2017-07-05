@@ -125,7 +125,7 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   SUBROUTINE calc_self(Iwbox,myid,i,LQ,k_number,uhub,mu,beta,lambdach,lambdasp, &
-       self,fupdown,gammach,gammasp, chi_bubble,chich_x0,chisp_x0, &
+       self,fupdown,gammach,gammasp, chi_bubble,chich_x0,chisp_x0,trilexch,trilexsp, &
        dcoq,dsiq,dcol,dsil, &
        selflist,selflistch,selflistsp,selflistrest)
     !this subroutine calculates the DGA self-energy  for one bosonic frequency
@@ -141,6 +141,7 @@ CONTAINS
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,-Iwbox:), INTENT(IN) :: fupdown
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,-Iwbox:), INTENT(IN) :: gammach,gammasp
     COMPLEX(KIND=8), DIMENSION(-Iwbox:,:), INTENT(IN) :: chi_bubble
+    COMPLEX(KIND=8), DIMENSION(-Iwbox:,:), INTENT(IN) :: trilexch,trilexsp
     COMPLEX(KIND=8), DIMENSION(:), INTENT(IN) :: chich_x0,chisp_x0
     !output: chi_ch_loc(omega), chi_sp_loc(omega), local self-energy calculated with DGA equation
     COMPLEX(KIND=8), DIMENSION(:,0:), INTENT(OUT) :: selflist,selflistch
@@ -230,37 +231,6 @@ CONTAINS
              ENDDO
           ENDDO
           
-          DO k=-Iwbox,Iwbox-1
-             DO j=-Iwbox,Iwbox-1
-                selfphich(j,k)=-gammach(j,k)-uhub/beta**2
-                selfphisp(j,k)=-gammasp(j,k)+uhub/beta**2
-                IF(j .EQ. k) THEN
-                   selfphich(j,j)=selfphich(j,j)+ &
-                        1.d0/chi_bubble(j,ind)
-                   selfphisp(j,j)=selfphisp(j,j)+ &
-                        1.d0/chi_bubble(j,ind)
-                ENDIF
-             ENDDO
-          ENDDO
-          
-          !Compute inversion chi_q=(chi_0_loc**-1-Gamma_loc)**-1
-          CALL ZGETRF(Mmat,Mmat,selfphich,Mmat,ipiv,infoinv)
-          CALL ZGETRI(Mmat,selfphich,Mmat,ipiv,workinv,10*Mmat,infoinv)
-          
-          CALL ZGETRF(Mmat,Mmat,selfphisp,Mmat,ipiv,infoinv)
-          CALL ZGETRI(Mmat,selfphisp,Mmat,ipiv,workinv,10*Mmat,infoinv)
-          
-          DO j=0,Iwbox-1 
-             vrgch(j)=dcmplx(0.d0,0.d0)
-             vrgsp(j)=dcmplx(0.d0,0.d0)
-             DO k=-Iwbox,Iwbox-1
-                vrgch(j)=vrgch(j)+selfphich(k,j)
-                vrgsp(j)=vrgsp(j)+selfphisp(k,j) 
-             ENDDO
-             vrgch(j)=vrgch(j)/chi_bubble(j,ind)
-             vrgsp(j)=vrgsp(j)/chi_bubble(j,ind)
-          ENDDO
-          
           !compute Sigma_q
           DO j=0,Iwbox-1
              chi0(j)=dcmplx(0.0d0,0.0d0)
@@ -276,12 +246,12 @@ CONTAINS
              ENDDO
           ENDDO
           DO j=0,Iwbox-1
-             chi0(j)=(chi0(j)+1.5d0*vrgsp(j)* &
-                  (1.d0+uhub*chisp)-0.5d0*vrgch(j)* &
+             chi0(j)=(chi0(j)+1.5d0*trilexsp(j,ind)* &
+                  (1.d0+uhub*chisp)-0.5d0*trilexch(j,ind)* &
                   (1.d0-uhub*chich)-1.5d0+0.5d0)*uhub/beta
-             chi0ch(j)=(chi0ch(j)-0.5d0*vrgch(j)* &
+             chi0ch(j)=(chi0ch(j)-0.5d0*trilexch(j,ind)* &
                   (1.d0-uhub*chich)+0.5d0)*uhub/beta
-             chi0sp(j)=(chi0sp(j)+1.5d0*vrgsp(j)* &
+             chi0sp(j)=(chi0sp(j)+1.5d0*trilexsp(j,ind)* &
                   (1.d0+uhub*chisp)-1.5d0)*uhub/beta
              chi0rest(j)=(chi0rest(j))*uhub/beta
           ENDDO
