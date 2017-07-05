@@ -148,8 +148,10 @@ CONTAINS
     REAL(KIND=8) :: qz,Q0b
     COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: chimax_x0
     COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: chi_bubble_slice
+    COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: trilex
 
     ALLOCATE(chi_bubble_slice(-Iwbox:Iwbox-1,1:LQ))   !for the qmax determination
+    ALLOCATE(trilex(-Iwbox:Iwbox-1))
     ALLOCATE(chimax_x0(1:LQ))
     !allocate arrays containing cos and sin functions evaluated for all momenta in the k'-, q- and k-grid
     ALLOCATE(Qv(0:LQ-1))
@@ -267,5 +269,70 @@ CONTAINS
     DEALLOCATE(workinv)
 
   END FUNCTION calc_chi
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  !computes subsceptibilites (without lambda correction!) and the trilex vertex (for obtaining the selfenergy)
+  !input: indices ix, iy for the q-point (Qv(ix),Qv(iy)), lambda_spin (x), lambda_charge(x_ch)
+  !output: susceptibilities in chis, chich and trilex vertex gammas, gammach 
+  SUBROUTINE calc_chi_trilex(Iwbox,U,beta,gamma,chi_bubble,chi,trilex)
+    IMPLICIT NONE
+    !calculates full susceptibility for a given q and omega
+    !and the trilex vertex for a given q and omega as a function of \nu
+    
+    !input:
+    INTEGER, INTENT(IN) :: Iwbox
+    REAL(KIND=8), INTENT(IN) :: U,beta
+    COMPLEX(KIND=8), DIMENSION(-Iwbox:,-Iwbox:), INTENT(IN) :: gamma
+    COMPLEX(KIND=8), DIMENSION(-Iwbox:), INTENT(IN) :: chi_bubble
+    !output:
+    COMPLEX(KIND=8), INTENT(OUT) :: chi
+    COMPLEX(KIND=8), DIMENSION(-Iwbox:), INTENT(OUT) :: trilex
+    !function internal variables
+    INTEGER :: j,k
+    COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: selftemp
+    !variable for lapack inversion subroutines
+    INTEGER :: infoinv,Mmat
+    INTEGER, DIMENSION(:), ALLOCATABLE :: ipiv
+    COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: workinv
+    
+    ALLOCATE(selftemp(-Iwbox:Iwbox-1,-Iwbox:Iwbox-1))
+    ALLOCATE(ipiv(1:2*Iwbox))
+    ALLOCATE(workinv(1:20*Iwbox))
+    Mmat=2*Iwbox
+    
+    DO k=-Iwbox,Iwbox-1
+       DO j=-Iwbox,Iwbox-1
+          selftemp(j,k)=-gamma(j,k)
+          IF (j.EQ.k) THEN
+             selftemp(j,j)=selftemp(j,j)+1.d0/chi_bubble(j)
+          ENDIF
+       ENDDO
+    ENDDO
+    
+    ! compute inversion chi_q=(chi_bubble_q**-1-Gamma_loc)**-1
+    CALL ZGETRF(Mmat,Mmat,selftemp,Mmat,ipiv,infoinv)
+    CALL ZGETRI(Mmat,selftemp,Mmat,ipiv,workinv,10*Mmat,infoinv)
+    
+    ! compute Chi and trilex vertex
+    chi=(0.d0,0.d0)
+    DO k=-iwbox,iwbox-1
+       trilex(k)=(0.d0,0.d0)
+       DO j=-iwbox,iwbox-1
+          chi=chi+selftemp(j,k)
+          trilex(k)=trilex(k)+selftemp(k,j)
+       ENDDO
+       trilex(k)=trilex(k)/chi_bubble(k)
+    ENDDO
+    
+    chi=chi/beta**2
+
+    trilex=trilex/(1.0d0-U*chi)
+
+    DEALLOCATE(selftemp)
+    DEALLOCATE(ipiv)
+    DEALLOCATE(workinv)
+
+  END SUBROUTINE calc_chi_trilex
   
 END MODULE calc_susc

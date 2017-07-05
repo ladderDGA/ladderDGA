@@ -12,9 +12,9 @@ MODULE vardef
   CHARACTER(LEN=:), ALLOCATABLE :: fname
 
   !parameters read in from ladderDGA.into 
-  REAL(KIND=8) :: uhub,mu,beta,nden,xch_so,xsp_so
+  REAL(KIND=8) :: uhub,mu,beta,nden
   INTEGER :: Iwbox,Iwbox_bose,shift,LQ,Nint,k_number
-  LOGICAL :: sigma_only,chi_only,lambdaspin_only,sumallch,sumallsp
+  LOGICAL :: chi_only,lambdaspin_only,sumallch,sumallsp
 
   !index of bosonic matsubara frequency (1 rank = 1 frequency, might be changed)
   INTEGER :: i
@@ -35,6 +35,9 @@ MODULE vardef
   COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: chi_bubble,chi_bubble_pos,chi_bubble_neg,chi_bubble_slice
   COMPLEX(KIND=8), DIMENSION(:), ALLOCATABLE :: chich_x0,chisp_x0
   COMPLEX(KIND=8) :: chich_q_sum,chich_sum
+
+  !TRILEX vertex
+  COMPLEX(KIND=8), DIMENSION(:,:), ALLOCATABLE :: trilexch,trilexsp
 
   !variables for grids in momentum space
   REAL(KIND=8), DIMENSION(:,:), ALLOCATABLE :: klist,dcok,dsik,dcol,dsil
