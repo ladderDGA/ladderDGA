@@ -21,10 +21,17 @@ OBJECTS := $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 
 FFLAGS += # General compiler flags
 RUNFLAGS := -O4 # Compiler flags for quick compile and run
-DBFLAGS := -C -traceback -g -fpe0 # Compiler flags for debugging
+#DBFLAGS := -C -traceback -g -fpe0 # Compiler flags for debugging
+DBFLAGS := -Og -g -fcheck=all
 PROFFLAGS := -O2 -g # Compiler flags for profiling
 OPTIMIZEFLAGS := -O4 # Compiler flags for optimal speed
-LIB := -llapack # Specify Libraries
+########################################################
+### be very careful here: in case of using MKL instead of LAPACK, the FFTW-libraries have
+### to be loaded first, in order to avoid conflicts! (the MKL library also have FFT functions 
+### with the same name than FFTW, but not all of FFTW)
+########################################################
+#LIB := -llapack # Specify Libraries
+LIB := -L/lrz/sys/libraries/fftw/3.3.3/sse/lib -lfftw3f -lfftw3 -lfftw3l -L/lrz/sys/intel/compiler/composer_xe_2015.2.164/mkl/lib/intel64 -lmkl_rt # Specify Libraries
 INC := # Additional include paths
 
 

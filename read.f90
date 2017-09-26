@@ -5,7 +5,8 @@ MODULE read
 CONTAINS
   
   SUBROUTINE read_parameters(fname,uhub,xmu,beta,nden, &
-       Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,chi_only,lambdaspin_only,sumallch,sumallsp)
+       Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,chi_only,lambdaspin_only,sumallch,sumallsp,&
+       fft_bubble,fft_real)
     
     !input: filename of parameter file
     CHARACTER(LEN=*), INTENT(IN) :: fname
@@ -13,6 +14,7 @@ CONTAINS
     REAL(KIND=8), INTENT(OUT) :: uhub,xmu,beta,nden
     INTEGER, INTENT(OUT) :: Iwbox,Iwbox_bose,shift,LQ,Nint,k_number
     LOGICAL, INTENT(OUT) :: chi_only,lambdaspin_only,sumallch,sumallsp
+    LOGICAL, INTENT(OUT) :: fft_bubble,fft_real
     
     !reading AIM/DMFT and lambda-correction parameters from file "fname"
     OPEN(30,file=fname,form='formatted',status='old')
@@ -28,6 +30,8 @@ CONTAINS
     READ(30,*) lambdaspin_only
     READ(30,*)
     READ(30,*) sumallch,sumallsp
+    READ(30,*)
+    READ(30,*) fft_bubble, fft_real
     CLOSE(30)
     
   END SUBROUTINE read_parameters

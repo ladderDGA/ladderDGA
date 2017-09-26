@@ -15,6 +15,7 @@ MODULE vardef
   REAL(KIND=8) :: uhub,mu,beta,nden
   INTEGER :: Iwbox,Iwbox_bose,shift,LQ,Nint,k_number
   LOGICAL :: chi_only,lambdaspin_only,sumallch,sumallsp
+  LOGICAL :: fft_bubble,fft_real
 
   !index of bosonic matsubara frequency (1 rank = 1 frequency, might be changed)
   INTEGER :: i
