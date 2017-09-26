@@ -40,7 +40,8 @@ PROGRAM self_k
   !only rank 0 reads the parameters
   IF (myid.EQ.0) THEN
      CALL read_parameters('ladderDGA.in',uhub,mu,beta,nden, &
-          Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,chi_only,lambdaspin_only,sumallch,sumallsp)
+          Iwbox,Iwbox_bose,shift,LQ,Nint,k_number,chi_only,lambdaspin_only,&
+          sumallch,sumallsp,fft_bubble,fft_real)
      !Check parameters
      WRITE(6,*) 'U= ', uhub
      WRITE(6,*) 'MU=',mu
@@ -56,6 +57,8 @@ PROGRAM self_k
      WRITE(6,*) 'Lambda correction only for the magnetic channel (lambda_charge=0)?',lambdaspin_only
      WRITE(6,*) 'Sum for lambda correction in the density channel over all bosonic frequencies?',sumallch
      WRITE(6,*) 'Sum for lambda correction in the magnetic channel over all bosonic frequencies?',sumallsp
+     WRITE(6,*) 'Calculate bubble with fftw=',fft_bubble
+     WRITE(6,*) 'Real fftw?',fft_real
   ENDIF
 
   !Broadcast parameters to all ranks
@@ -74,6 +77,8 @@ PROGRAM self_k
   CALL MPI_BCAST(lambdaspin_only,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(sumallch,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BCAST(sumallsp,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(fft_bubble,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
+  CALL MPI_BCAST(fft_real,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierror)
   CALL MPI_BARRIER(MPI_COMM_WORLD, ierror)
 
   !determine bosonic frequency index i
@@ -262,24 +267,68 @@ PROGRAM self_k
   CALL init_arrays(Nint,LQ,k_number,klist,0d0,pi,qmax,Q0b,Qv,dcok,dsik,dcoq,dsiq,dcol,dsil)
 
   !calculate bare susceptibility (bubble term)
-  CALL calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble_pos)
-  !copy chi_bubble for nu>0 to nu<0 by using the symmetry chi_bubble(-nu,omega,q)=dcmplx(chi_bubble(nu,-omega,q))
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  request=MPI_REQUEST_NULL
-  CALL MPI_ISSEND(chi_bubble_pos,Iwbox*LQ*(LQ+1)*(LQ+2)/6,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,request,ierror)
-  CALL MPI_RECV(chi_bubble_neg,Iwbox*LQ*(LQ+1)*(LQ+2)/6,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,recvstatus,ierror)
-  CALL MPI_WAIT(request,sendstatus,ierror)
-  CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
-  DO ind=1,LQ*(LQ+1)*(LQ+2)/6
-     DO j=-Iwbox,-1
-        chi_bubble(j,ind)=CONJG(chi_bubble_neg(-j-1,ind))
+  IF(.not.fft_bubble)THEN
+     write(*,*) "in not bubble fft"
+
+     CALL calc_bubble(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble_pos)
+     !copy chi_bubble for nu>0 to nu<0 by using the symmetry chi_bubble(-nu,omega,q)=dcmplx(chi_bubble(nu,-omega,q))
+     CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+     request=MPI_REQUEST_NULL
+     CALL MPI_ISSEND(chi_bubble_pos,Iwbox*LQ*(LQ+1)*(LQ+2)/6,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,request,ierror)
+     CALL MPI_RECV(chi_bubble_neg,Iwbox*LQ*(LQ+1)*(LQ+2)/6,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,recvstatus,ierror)
+     CALL MPI_WAIT(request,sendstatus,ierror)
+     CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+     DO ind=1,LQ*(LQ+1)*(LQ+2)/6
+        DO j=-Iwbox,-1
+           chi_bubble(j,ind)=CONJG(chi_bubble_neg(-j-1,ind))
+        ENDDO
+        DO j=0,Iwbox-1
+           chi_bubble(j,ind)=chi_bubble_pos(j,ind)
+        ENDDO
      ENDDO
-     DO j=0,Iwbox-1
-        chi_bubble(j,ind)=chi_bubble_pos(j,ind)
-     ENDDO
-  ENDDO
-  DEALLOCATE(chi_bubble_pos)
-  DEALLOCATE(chi_bubble_neg)
+     DEALLOCATE(chi_bubble_pos)
+     DEALLOCATE(chi_bubble_neg)
+
+  ENDIF
+
+  IF(fft_bubble)THEN
+  
+     write(*,*) "in fft bubble"
+     !!! calculation of the bubble with fft
+     if(fft_real)then
+       !CALL calc_bubble_fft_real(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble_pos)
+       write(*,*) "real FFTW for 3D not yet implemented!"
+       stop
+     else
+        write(*,*) "call func"
+       CALL calc_bubble_fft(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq,chi_bubble_pos)
+     endif
+  
+     !CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+     !IF(i .EQ. 0) THEN
+        !call test_fftw()
+     !ENDIF
+  
+     chi_bubble_neg=0d0
+     !copy chi_bubble for nu>0 to nu<0 by using the symmetry chi_bubble(-nu,omega,q)=dcmplx(chi_bubble(nu,-omega,q))
+    CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+    request=MPI_REQUEST_NULL
+    CALL MPI_ISSEND(chi_bubble_pos,Iwbox*LQ*(LQ+1)*(LQ+2)/6,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,request,ierror)
+    CALL MPI_RECV(chi_bubble_neg,Iwbox*LQ*(LQ+1)*(LQ+2)/6,MPI_COMPLEX16,-myid+2*Iwbox_bose,98,MPI_COMM_WORLD,recvstatus,ierror)
+    CALL MPI_WAIT(request,sendstatus,ierror)
+    CALL MPI_BARRIER(MPI_COMM_WORLD,ierror)
+    DO ind=1,LQ*(LQ+1)*(LQ+2)/6
+       DO j=-Iwbox,-1
+          chi_bubble(j,ind)=CONJG(chi_bubble_neg(-j-1,ind))
+       ENDDO
+       DO j=0,Iwbox-1
+          chi_bubble(j,ind)=chi_bubble_pos(j,ind)
+       ENDDO
+    ENDDO
+    DEALLOCATE(chi_bubble_pos)
+    DEALLOCATE(chi_bubble_neg)
+  
+  ENDIF
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   

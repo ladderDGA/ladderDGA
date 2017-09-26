@@ -21,10 +21,12 @@ OBJECTS := $(patsubst %,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 
 FFLAGS += # General compiler flags
 RUNFLAGS := -O4 # Compiler flags for quick compile and run
-DBFLAGS := -C -traceback -g -fpe0 # Compiler flags for debugging
+#DBFLAGS := -C -traceback -g -fpe0 # Compiler flags for debugging
+DBFLAGS := -Og -g -fcheck=all
 PROFFLAGS := -O2 -g # Compiler flags for profiling
 OPTIMIZEFLAGS := -O4 # Compiler flags for optimal speed
-LIB := -llapack # Specify Libraries
+#LIB := -llapack -lblas -L/Users/andi/opt/lib -lfftw3 # Specify Libraries
+LIB := -L/lrz/sys/intel/compiler/composer_xe_2015.2.164/mkl/lib/intel64 -lmkl_rt -L/lrz/sys/libraries/fftw/3.3.3/sse/lib -lfftw3f -lfftw3 -lfftw3l # Specify Libraries
 INC := # Additional include paths
 
 

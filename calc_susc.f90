@@ -6,6 +6,8 @@ MODULE calc_susc
   USE dispersion
   IMPLICIT NONE
 
+  include '/lrz/sys/libraries/fftw/3.3.3/include/fftw3.f'
+
   INTEGER, PARAMETER :: qmaxsteps=100
   REAL(KIND=8), PARAMETER :: qmaxprec=1E-14
 
@@ -35,10 +37,14 @@ CONTAINS
     ENDDO
     
     chi_bubble=dcmplx(0.0d0,0.0d0)
+
+    if(i.eq.0)write(6,*) "----------------"
+    if(i.eq.0)write(6,*) "bubble plain"
     DO igx=1, Ng
        DO igy=1, Ng
           DO igz=1,Ng
              DO iNx=0,Nint-1
+                if(i.eq.0)write(*,*) "   ", inx, "/", Nint-1
                 DO iNy=0,Nint-1
                    DO iNz=0,Nint-1
                       ek=eps(dcok(iNx,igx),dcok(iNy,igy),dcok(iNz,igz), &
@@ -69,6 +75,203 @@ CONTAINS
     chi_bubble=beta*chi_bubble/ &
          ((2.0d0*dfloat(Nint))**3)
   END SUBROUTINE calc_bubble
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  SUBROUTINE calc_bubble_fft(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq, &
+       chi_bubble_pos)
+    !caluclates the non-interacing susceptibility as a function of (nu,omega,q)
+  
+    !input:
+    INTEGER, INTENT(IN) :: LQ,Nint,i,Iwbox
+    REAL(KIND=8), INTENT(IN) :: mu,beta
+    REAL(KIND=8), DIMENSION(0:,:), INTENT(IN) :: dcok,dsik
+    REAL(KIND=8), DIMENSION(0:), INTENT(IN) :: dcoq,dsiq
+    COMPLEX(KIND=8), DIMENSION(-2*Iwbox:), INTENT(IN) :: self
+    !output:
+    COMPLEX(KIND=8), DIMENSION(0:,:), INTENT(OUT) :: chi_bubble_pos
+    !subroutine internal variables
+    INTEGER :: j,ix,iy,iz,iNx,iNy,iNz,igx,igy,igz,ind
+    REAl(KIND=8) :: pi,ek,ekq
+    COMPLEX(KIND=8), ALLOCATABLE :: w(:)
+    COMPLEX(KIND=8), ALLOCATABLE :: Gk1(:,:,:), Gr1(:,:,:)
+    COMPLEX(KIND=8), ALLOCATABLE :: Gk2(:,:,:), Gr2(:,:,:)
+  
+    COMPLEX(KIND=8), ALLOCATABLE :: phasematrix(:,:,:)
+    COMPLEX(KIND=8), ALLOCATABLE :: phasevector(:)
+  
+    integer*8 :: plan
+  
+    !!! some checks that the parameters are compatible with fft algorithm
+    write(*,*) "Ng", Ng
+    write(*,*) "Nint", Nint
+    write(*,*) "Lq", Lq
+    if(Ng.ne.1)then
+       write(6,*) "Gauss-Legendre not compatible with FFT bubble!"
+       stop
+    endif
+    if((lq)*2-2.ne.nint)then
+       write(6,*) "(LQ)*2-2.ne.Nint: FFT not possible!"
+       !write(*,*) "lq", lq
+       !write(*,*) "nint", nint
+       stop
+    endif
+  
+    pi=dacos(-1.0d0)
+    ALLOCATE(w(-2*Iwbox:2*Iwbox-1))
+    DO j=-2*Iwbox,2*Iwbox-1
+       w(j)=dcmplx(0.0d0,(pi/beta)*dfloat(2*j+1))+mu-self(j)
+    ENDDO
+  
+    !!! initialize Greens functions in real and reciprocal space
+    ALLOCATE(Gk1(0:Nint-1,0:Nint-1,0:Nint-1))
+    ALLOCATE(Gk2(0:Nint-1,0:Nint-1,0:Nint-1))
+    ALLOCATE(Gr1(0:Nint-1,0:Nint-1,0:Nint-1))
+    ALLOCATE(Gr2(0:Nint-1,0:Nint-1,0:Nint-1))
+    Gk1=0d0
+    Gk2=0d0
+    Gr1=0d0
+    Gr2=0d0
+  
+    !!! phases necessary for use of fftw package
+    ALLOCATE(phasematrix(0:Nint-1,0:Nint-1,0:Nint-1))
+    ALLOCATE(phasevector(0:Nint-1))
+  
+    do inx=0,nint-1
+       phasevector(inx)=exp(-2*pi*cmplx(0d0,1d0)*float(inx)/float(nint)) * (-1)**inx
+    enddo
+  
+    do inx=0,nint-1
+    do iny=0,nint-1
+    do inz=0,nint-1
+       phasematrix(inx,iny,inz)=phasevector(inx)*phasevector(iny)*phasevector(inz)
+    enddo
+    enddo
+    enddo
+    
+    chi_bubble_pos=dcmplx(0.0d0,0.0d0)
+  
+    !!! bubble with fft
+    if(i.eq.0)write(6,*) "----------------"
+    if(i.eq.0)write(6,*) "bubble with fftw"
+    DO j=0,iwbox-1
+       if(i.eq.0)write(6,*) "iw / iwbox", j, "/", iwbox
+       DO igx=1, Ng
+          DO igy=1, Ng
+             DO igz=1, Ng
+
+                DO iNx=0,Nint-1
+                   DO iNy=0,Nint-1
+                      DO iNz=0,Nint-1
+                         ek=eps(dcok(iNx,igx),dcok(iNy,igy),dcok(iNz,igz), &
+                            1.d0,1.d0,1.0d0,0.0d0,0.0d0,0.d0,0.d0,0.d0,0.d0)
+                         Gk1(inx,iny,inz)=ws(igx)/(w(j)-ek)
+                         Gk2(inx,iny,inz)=ws(igy)/(w(j+i)-ek)
+                      ENDDO
+                   ENDDO
+                ENDDO
+  
+                if(i.eq.0)then
+                DO iNx=0,Nint-1
+               !DO iNy=0,Nint-1
+               !DO iNz=0,Nint-1
+               iny=1
+               inz=1
+                write(100,*) gk1(inx,iny,inz)
+                enddo
+               !enddo
+               !enddo
+                endif
+  
+                !!! forward Fourier transform
+                call dfftw_plan_dft_3d(plan,Nint,Nint,Nint,Gk1,Gr1,FFTW_FORWARD,FFTW_ESTIMATE)
+                call dfftw_execute(plan)
+                call dfftw_destroy_plan(plan)
+                !!! forward Fourier transform
+                call dfftw_plan_dft_3d(plan,Nint,Nint,Nint,Gk2,Gr2,FFTW_FORWARD,FFTW_ESTIMATE)
+                call dfftw_execute(plan)
+                call dfftw_destroy_plan(plan)
+
+                 if(i.eq.0)then
+                 DO iNx=0,Nint-1
+                !DO iNy=0,Nint-1
+                !DO iNz=0,Nint-1
+                iny=1
+                inz=1
+                 write(101,*) gr1(inx,iny,inz)
+                 enddo
+                !enddo
+                !enddo
+                 endif
+  
+                !!! normalize
+                !Gr1=Gr1/sqrt(float(nint**3))
+                !Gr2=Gr2/sqrt(float(nint**3))
+  
+                !!! apply phase factor (TODO documentation of this!)
+                DO iNx=0,Nint-1
+                DO iNy=0,Nint-1
+                DO iNz=0,Nint-1
+                   Gr1(inx,iny,inz)=Gr1(inx,iny,inz)*phasematrix(inx,iny,inz)
+                   Gr2(inx,iny,inz)=Gr2(inx,iny,inz)*phasematrix(inx,iny,inz)
+                ENDDO
+                ENDDO
+                ENDDO
+  
+                !!! convolute in real space
+                DO iNx=0,Nint-1
+                DO iNy=0,Nint-1
+                DO iNz=0,Nint-1
+                   Gr1(inx,iny,inz)=Gr1(inx,iny,inz)*Gr2(inx,iny,inz)
+                ENDDO
+                ENDDO
+                ENDDO
+  
+                !!! backward Fourier transform
+                Gk1=0d0
+                call dfftw_plan_dft_3d(plan,Nint,Nint,Nint,Gr1,Gk1,FFTW_BACKWARD,FFTW_ESTIMATE)
+                call dfftw_execute(plan)
+                call dfftw_destroy_plan(plan)
+
+                !!! normalize
+                Gk1=Gk1/(float(nint**(9/2)))
+
+                if(i.eq.0)then
+                DO iNx=0,Nint-1
+               !DO iNy=0,Nint-1
+               !DO iNz=0,Nint-1
+               iny=1
+               inz=1
+                write(102,*) gk1(inx,iny,inz)
+                enddo
+               !enddo
+               !enddo
+                endif
+  
+                !!! write values of full-BZ bubble in reduced-BZ bubble
+                do ix=0,LQ-1
+                do iy=0,ix
+                do iz=0,iy
+                   !ind=ix*(ix+1)/2+iy+1   !!! index for fully irred. BZ
+                   ind=ix*(ix+1)*(ix+2)/6+iy*(iy+1)/2+iz+1
+                   chi_bubble_pos(j,ind)=chi_bubble_pos(j,ind)-Gk1(ix,iy,iz)
+                enddo
+                enddo
+                enddo
+  
+             ENDDO
+          ENDDO
+       ENDDO
+    ENDDO
+  
+    chi_bubble_pos=beta*chi_bubble_pos/ &
+         ((2.0d0**2*dfloat(Nint**2)))
+  
+    DEALLOCATE(w,Gk1,Gr1,Gk2,Gr2)
+  
+  END SUBROUTINE calc_bubble_fft
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
   SUBROUTINE calc_bubble_slice(mu,beta,Iwbox,i,self,LQ,Nint,dcok,dsik,dcoq,dsiq, &

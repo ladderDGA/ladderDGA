@@ -2,24 +2,24 @@
 MODULE dispersion
   IMPLICIT NONE
   
-  INTEGER, PARAMETER :: ng=5
+  INTEGER, PARAMETER :: ng=1
   !points for the Gauss-Legendre integration
-  !REAL(KIND=8), PARAMETER, DIMENSION(ng) :: tstep=(/1.0d0/)
+  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: tstep=(/1.0d0/)
   !weights for the Gauss-Legendre integration
-  !REAL(KIND=8), PARAMETER, DIMENSION(ng) :: ws=(/2.0d0/)
+  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: ws=(/2.0d0/)
 
   !here data for higher order Gauss-Legendre integration can be given
   !the parameter ng has to be set accordingly
 
   !data for 5th-order Legendre Integration
-  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: tstep= &
-  (/-0.9061798459386640,-0.53846931010568309, &
-  0.0000000000000000, 0.53846931010568309,&
-  0.9061798459386640/)
-  REAL(KIND=8), PARAMETER, DIMENSION(ng) :: ws= &
-  (/ 0.2369268850561891, 0.47862867049936650, &
-  0.5688888888888889, 0.47862867049936650, &
-  0.2369268850561891/)
+  !REAL(KIND=8), PRIVATE, PARAMETER, DIMENSION(ng) :: tstep= &
+  !(/-0.9061798459386640,-0.53846931010568309, &
+  !0.0000000000000000, 0.53846931010568309,&
+  !0.9061798459386640/)
+  !REAL(KIND=8), PRIVATE, PARAMETER, DIMENSION(ng) :: ws= &
+  !(/ 0.2369268850561891, 0.47862867049936650, &
+  !0.5688888888888889, 0.47862867049936650, &
+  !0.2369268850561891/)
   
 CONTAINS
 
